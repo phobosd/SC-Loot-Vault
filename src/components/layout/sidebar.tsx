@@ -36,8 +36,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { data: session }: any = useSession();
 
-  // TEMPORARY: Force SUPERADMIN role for preview while middleware is disabled
-  const user = session?.user || { name: "System Preview", role: "SUPERADMIN" };
+  const user = session?.user;
 
   return (
     <div className="w-64 flex-shrink-0 flex flex-col h-full sc-glass border-r border-sc-border z-10">
