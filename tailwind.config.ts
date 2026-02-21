@@ -12,12 +12,12 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
         sc: {
-          blue: "#00D1FF",
+          blue: "var(--sc-blue)",
           gold: "#E0B130",
           red: "#FF4D4D",
           green: "#00FFC2",
-          surface: "rgba(10, 10, 20, 0.85)",
-          border: "rgba(0, 209, 255, 0.2)",
+          surface: "var(--sc-surface)",
+          border: "var(--sc-border)",
         }
       },
       backgroundImage: {

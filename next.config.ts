@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors 'self' https://*.web.app https://*.firebaseapp.com;",
+            value: "frame-ancestors 'self' https://*.web.app https://*.firebaseapp.com; img-src 'self' data: *;",
           },
           {
             key: "X-Frame-Options",

@@ -5,6 +5,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { UserTable } from "@/components/users/user-table";
+import { ProfileForm } from "@/components/users/profile-form";
 import { AddUserDialog } from "@/components/users/add-user-dialog";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -17,16 +18,28 @@ export default async function UsersPage() {
     redirect("/login");
   }
 
-  const org = await prisma.org.findUnique({
-    where: { id: session.user.orgId }
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: { org: true }
   });
 
-  if (!org) return <div className="p-10 text-sc-red font-mono sc-glass border border-sc-red/20">Org Context Not Found.</div>;
+  if (!currentUser) redirect("/login");
 
-  // Logic for users visibility: SUPERADMIN sees all, others see only their org
+  const org = currentUser.org;
+  const isSuperAdmin = currentUser.role === 'SUPERADMIN';
+
+  if (!org && !isSuperAdmin) return <div className="p-10 text-sc-red font-mono sc-glass border border-sc-red/20">Org Context Not Found.</div>;
+
+  // If user is a MEMBER, show their profile instead of the user list
+  if (currentUser.role === 'MEMBER') {
+    if (!org) return <div>Global User Profile coming soon.</div>;
+    return <ProfileForm user={currentUser} org={org} />;
+  }
+
+  // Logic for users visibility: SUPERADMIN sees all, ADMIN sees only their org
   const userWhere: any = {};
-  if (session.user.role !== 'SUPERADMIN') {
-    userWhere.orgId = org.id;
+  if (!isSuperAdmin) {
+    userWhere.orgId = org?.id;
   }
 
   const users = await prisma.user.findMany({
@@ -49,13 +62,13 @@ export default async function UsersPage() {
             User Management
           </h1>
           <p className="text-xs text-sc-gold/60 mt-1 font-mono tracking-widest uppercase">
-            {session.user.role === 'SUPERADMIN' ? "Global Personnel Database" : `Org Personnel Database // ${org.name}`}
+            {isSuperAdmin ? "Global Personnel Database" : `Org Personnel Database // ${org?.name}`}
           </p>
         </div>
-        <AddUserDialog orgId={org.id} />
+        <AddUserDialog orgId={org?.id || ""} currentUserRole={currentUser.role} />
       </div>
 
-      <UserTable initialUsers={users} currentUserRole={session.user.role} />
+      <UserTable initialUsers={users} currentUserRole={currentUser.role} />
     </div>
   );
 }

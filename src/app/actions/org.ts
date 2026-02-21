@@ -90,6 +90,10 @@ export async function updateOrgSettings(orgId: string, data: {
   name: string;
   primaryColor: string;
   accentColor: string;
+  secondaryColor: string;
+  successColor: string;
+  dangerColor: string;
+  textColor: string;
   logoUrl?: string | null;
   headerText?: string | null;
   footerText?: string | null;
@@ -102,6 +106,10 @@ export async function updateOrgSettings(orgId: string, data: {
           name: data.name,
           primaryColor: data.primaryColor,
           accentColor: data.accentColor,
+          secondaryColor: data.secondaryColor,
+          successColor: data.successColor,
+          dangerColor: data.dangerColor,
+          textColor: data.textColor,
           logoUrl: data.logoUrl,
         }
       }),

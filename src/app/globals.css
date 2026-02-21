@@ -1,9 +1,25 @@
 @import "tailwindcss";
 
+@theme {
+  --color-sc-blue: var(--sc-blue);
+  --color-sc-gold: var(--sc-gold);
+  --color-sc-green: var(--sc-green);
+  --color-sc-red: var(--sc-red);
+  --color-sc-border: var(--sc-border);
+  --color-sc-surface: var(--sc-surface);
+  --color-sc-text: var(--sc-text);
+}
+
 :root {
   --background: #0A0A12;
-  --foreground: #FFFFFF;
+  --foreground: var(--sc-text, #FFFFFF);
   --sc-blue: #00D1FF;
+  --sc-gold: #E0B130;
+  --sc-green: #00FFC2;
+  --sc-red: #FF4D4D;
+  --sc-text: #FFFFFF;
+  --sc-border: rgba(0, 209, 255, 0.2);
+  --sc-surface: rgba(10, 10, 20, 0.85);
 }
 
 body {
@@ -16,14 +32,14 @@ body {
 
 /* Star Citizen Glass Effect */
 .sc-glass {
-  background: rgba(10, 10, 20, 0.7);
+  background: var(--sc-surface, rgba(10, 10, 20, 0.7));
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 209, 255, 0.1);
+  border: 1px solid var(--sc-border, rgba(0, 209, 255, 0.1));
 }
 
 .sc-hud-border {
   border-left: 2px solid var(--sc-blue);
-  background: linear-gradient(90deg, rgba(0, 209, 255, 0.05) 0%, transparent 100%);
+  background: linear-gradient(90deg, var(--sc-border) 0%, transparent 100%);
 }
 
 .sc-hud-corner {

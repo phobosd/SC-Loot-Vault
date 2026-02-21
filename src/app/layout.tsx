@@ -3,6 +3,11 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/sidebar";
 import { AuthProvider } from "@/components/providers/session-provider";
+import { RouteSync } from "@/components/layout/route-sync";
+import { Suspense } from "react";
+import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,19 +24,62 @@ export const metadata: Metadata = {
   description: "Star Citizen Organization Loot Vault Manager",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session: any = await getServerSession(authOptions);
+  let themeStyles: any = {};
+
+  if (session?.user?.orgId) {
+    const org = await prisma.org.findUnique({
+      where: { id: session.user.orgId }
+    });
+    if (org) {
+      const accent = org.accentColor || "#00D1FF";
+      const primary = org.primaryColor || "#05050A";
+      const secondary = org.secondaryColor || "#E0B130";
+      const success = org.successColor || "#00FFC2";
+      const danger = org.dangerColor || "#FF4D4D";
+      const text = org.textColor || "#FFFFFF";
+
+      const accentRgb = hexToRgb(accent);
+      const primaryRgb = hexToRgb(primary);
+      const secondaryRgb = hexToRgb(secondary);
+      const successRgb = hexToRgb(success);
+      const dangerRgb = hexToRgb(danger);
+      
+      themeStyles = {
+        "--sc-blue": accent,
+        "--sc-blue-rgb": accentRgb,
+        "--sc-bg": primary,
+        "--sc-bg-rgb": primaryRgb,
+        "--sc-gold": secondary,
+        "--sc-gold-rgb": secondaryRgb,
+        "--sc-green": success,
+        "--sc-green-rgb": successRgb,
+        "--sc-red": danger,
+        "--sc-red-rgb": dangerRgb,
+        "--sc-text": text,
+        "--sc-border": `rgba(${accentRgb}, 0.2)`,
+        "--sc-surface": `rgba(${primaryRgb}, 0.85)`,
+      };
+    }
+  }
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen flex overflow-hidden`}
+        style={themeStyles}
       >
         <AuthProvider>
+          <Suspense fallback={null}>
+            <RouteSync />
+          </Suspense>
           <Sidebar />
-          <main className="flex-1 flex flex-col h-full bg-[#05050A] overflow-y-auto">
+          <main className="flex-1 flex flex-col h-full bg-[var(--sc-bg,#05050A)] overflow-y-auto">
             {/* Top Bar (HUD Elements) */}
             <header className="h-16 flex items-center justify-between px-8 border-b border-sc-border/20 bg-black/30 backdrop-blur-md">
               <div className="flex items-center gap-4">
@@ -62,4 +110,11 @@ export default function RootLayout({
       </body>
     </html>
   );
+}
+
+function hexToRgb(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result 
+    ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+    : "0, 209, 255";
 }

@@ -17,9 +17,13 @@ import {
   UserCheck,
   Building2,
   Ghost,
-  ShieldAlert
+  ShieldAlert,
+  Handshake
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PriorityAlert } from "./priority-alert";
+import { useState, useEffect } from "react";
+import axios from "axios";
 
 const menuItems = [
   { name: "Dashboard", href: "/dashboard", icon: Database },
@@ -27,6 +31,7 @@ const menuItems = [
   { name: "Assigned Assets", href: "/assigned", icon: UserCheck },
   { name: "Galactic Manifest", href: "/superadmin/manifest", icon: Database },
   { name: "Distributions", href: "/distributions", icon: RotateCw },
+  { name: "Alliance Network", href: "/alliances", icon: Handshake, role: ["ADMIN", "SUPERADMIN"] },
   { name: "Logs & History", href: "/logs", icon: History },
   { name: "Personnel", href: "/users", icon: Users },
   { name: "Discord Bot", href: "/discord", icon: Bot, role: ["ADMIN", "SUPERADMIN"] },
@@ -37,8 +42,15 @@ const menuItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session, update }: any = useSession();
+  const [org, setOrg] = useState<any>(null);
 
   const user = session?.user;
+
+  useEffect(() => {
+    if (session?.user) {
+      axios.get("/api/orgs/me").then(res => setOrg(res.data)).catch(() => {});
+    }
+  }, [session]);
 
   const handleStopImpersonating = async () => {
     await update({ stopImpersonating: true });
@@ -49,12 +61,20 @@ export function Sidebar() {
     <div className="w-64 flex-shrink-0 flex flex-col h-full sc-glass border-r border-sc-border z-10">
       <div className="p-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 sc-hud-corner flex items-center justify-center">
-            <div className="w-6 h-6 bg-sc-blue opacity-50 blur-[2px]" />
+          <div className="w-10 h-10 sc-hud-corner flex items-center justify-center overflow-hidden border border-sc-border">
+            {org?.logoUrl ? (
+              <img src={org.logoUrl} alt="" className="w-full h-full object-contain" />
+            ) : (
+              <div className="w-6 h-6 bg-sc-blue opacity-50 blur-[2px]" />
+            )}
           </div>
           <div>
-            <h1 className="font-bold text-sc-blue tracking-widest text-lg">DIXNCOX</h1>
-            <p className="text-[10px] text-sc-blue/60 tracking-tighter uppercase">Org Loot Vault</p>
+            <h1 className="font-bold text-sc-blue tracking-widest text-lg uppercase truncate max-w-[140px]">
+              {org?.name || (user?.role === 'SUPERADMIN' ? "NEXUS CORE" : "LOADING...")}
+            </h1>
+            <p className="text-[10px] text-sc-blue/60 tracking-tighter uppercase truncate max-w-[140px]">
+              {org?.whitelabelConfig?.footerText || (user?.role === 'SUPERADMIN' ? "Global Root System" : "Org Loot Vault")}
+            </p>
           </div>
         </div>
       </div>
@@ -62,9 +82,13 @@ export function Sidebar() {
       {/* Impersonation Banner */}
       {user?.isImpersonating && (
         <div className="mx-4 mb-4 p-3 bg-sc-red/10 border border-sc-red/30 rounded animate-in fade-in slide-in-from-top-2 duration-500">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1">
             <Ghost className="w-3 h-3 text-sc-red animate-pulse" />
             <p className="text-[9px] font-bold text-sc-red uppercase tracking-widest">Impersonation Active</p>
+          </div>
+          <div className="mb-3">
+            <p className="text-[10px] font-black text-white uppercase truncate">{user?.name || user?.username}</p>
+            <p className="text-[8px] text-gray-500 font-mono uppercase tracking-tighter truncate">Node: {org?.name || "Initializing..."}</p>
           </div>
           <button 
             onClick={handleStopImpersonating}
@@ -75,12 +99,16 @@ export function Sidebar() {
         </div>
       )}
 
+      <PriorityAlert />
+
       <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
           // Check role access
           if (item.role && !item.role.includes(user?.role)) return null;
 
           const isActive = pathname === item.href;
+          const pendingCount = item.name === "Alliance Network" ? org?._count?.receivedAllianceRequests : 0;
+
           return (
             <Link
               key={item.name}
@@ -96,7 +124,14 @@ export function Sidebar() {
                 <item.icon className={cn("w-5 h-5", isActive ? "text-sc-blue" : "text-gray-500 group-hover:text-gray-300")} />
                 {item.name}
               </div>
-              {isActive && <ChevronRight className="w-4 h-4" />}
+              <div className="flex items-center gap-2">
+                {pendingCount > 0 && (
+                  <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-sc-gold px-1 text-[10px] font-black text-black animate-pulse shadow-[0_0_10px_rgba(224,177,48,0.5)]">
+                    {pendingCount}
+                  </span>
+                )}
+                {isActive && <ChevronRight className="w-4 h-4" />}
+              </div>
             </Link>
           );
         })}

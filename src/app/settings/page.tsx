@@ -11,6 +11,10 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
+  if (!session.user.orgId && session.user.role === 'SUPERADMIN') {
+    redirect("/superadmin");
+  }
+
   // Find the specific Org for the logged in user
   const org = await prisma.org.findUnique({
     where: { id: session.user.orgId },

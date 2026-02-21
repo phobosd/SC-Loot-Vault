@@ -46,6 +46,60 @@
             z-index: 110;
         }
     </style>
+    <script>
+        const TUNNEL_URL = "https://vault.andypace.com";
+        
+        function handleFrameLoad() {
+            console.log("Frame loaded.");
+            const loader = document.getElementById('loader');
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.remove(), 500);
+            }
+        }
+
+        // 1. Listen for route changes FROM the iframe
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === "VAULT_ROUTE_CHANGE") {
+                const newPath = event.data.path;
+                console.log("Syncing Parent URL to:", newPath);
+                
+                // Update address bar without reloading
+                if (window.location.pathname !== newPath) {
+                    window.history.pushState(null, '', newPath);
+                }
+            }
+        });
+
+        // 2. Initial Route Sync (Parent to Iframe)
+        window.addEventListener('DOMContentLoaded', () => {
+            const frame = document.getElementById('vault-frame');
+            
+            const currentPath = window.location.pathname;
+            const currentSearch = window.location.search;
+            const targetUrl = TUNNEL_URL + currentPath + currentSearch;
+            
+            console.log("Initializing App Route:", targetUrl);
+            frame.src = targetUrl;
+
+            // Security Check for setup
+            if (TUNNEL_URL.includes("YOUR_TUNNEL_URL_HERE")) {
+                const status = document.getElementById('status');
+                if (status) {
+                    status.innerText = "ERROR: TUNNEL ENDPOINT NOT CONFIGURED";
+                    status.style.color = "#FF4B4B";
+                }
+            }
+        });
+
+        // 3. Handle Back/Forward buttons
+        window.addEventListener('popstate', () => {
+            const frame = document.getElementById('vault-frame');
+            const targetUrl = TUNNEL_URL + window.location.pathname + window.location.search;
+            console.log("Browser Navigation Detected, Syncing Iframe:", targetUrl);
+            frame.src = targetUrl;
+        });
+    </script>
 </head>
 <body>
     <div class="scanlines"></div>
@@ -59,18 +113,9 @@
     <!-- The masked application frame -->
     <iframe 
         id="vault-frame"
-        src="https://vault.andypace.com" 
+        src="about:blank" 
         allow="clipboard-read; clipboard-write; geolocation"
-        onload="document.getElementById('loader').style.opacity='0'; setTimeout(() => document.getElementById('loader').remove(), 500);"
+        onload="handleFrameLoad()"
     ></iframe>
-
-    <script>
-        // Check if tunnel is configured
-        const frame = document.getElementById('vault-frame');
-        if (frame.src.includes("YOUR_TUNNEL_URL_HERE")) {
-            document.getElementById('status').innerText = "ERROR: TUNNEL ENDPOINT NOT CONFIGURED";
-            document.getElementById('status').style.color = "#FF4B4B";
-        }
-    </script>
 </body>
 </html>

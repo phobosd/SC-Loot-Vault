@@ -15,19 +15,58 @@ model Org {
   name              String            @unique
   slug              String            @unique
   logoUrl           String?
-  primaryColor      String            @default("#121212")
-  accentColor       String            @default("#20C997")
+  primaryColor      String            @default("#0A0A12")
+  accentColor       String            @default("#00D1FF")
+  secondaryColor    String            @default("#E0B130")
+  successColor      String            @default("#00FFC2")
+  dangerColor       String            @default("#FF4D4D")
+  textColor         String            @default("#FFFFFF")
   googleSheetId     String?
   discordBotToken   String?
+  discordBotLastSeen DateTime?
   discordGuildId    String?
   
   users             User[]
   lootItems         LootItem[]
   lootRequests      LootRequest[]
+  lootSessions      LootSession[]
   distributionLogs  DistributionLog[]
   whitelabelConfig  WhitelabelConfig?
+  
+  // Alliances
+  alliances         Alliance[] @relation("OrgAlliances")
+  alliedWith        Alliance[] @relation("AllyAlliances")
+  sentAllianceRequests     AllianceRequest[] @relation("SentAllianceRequests")
+  receivedAllianceRequests AllianceRequest[] @relation("ReceivedAllianceRequests")
+
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
+}
+
+model Alliance {
+  id        String   @id @default(cuid())
+  orgId     String
+  allyId    String
+  createdAt DateTime @default(now())
+
+  org       Org      @relation("OrgAlliances", fields: [orgId], references: [id], onDelete: Cascade)
+  ally      Org      @relation("AllyAlliances", fields: [allyId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, allyId])
+}
+
+model AllianceRequest {
+  id           String   @id @default(cuid())
+  senderOrgId  String
+  targetOrgId  String
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sender       Org      @relation("SentAllianceRequests", fields: [senderOrgId], references: [id], onDelete: Cascade)
+  target       Org      @relation("ReceivedAllianceRequests", fields: [targetOrgId], references: [id], onDelete: Cascade)
+
+  @@unique([senderOrgId, targetOrgId])
 }
 
 model WhitelabelConfig {
@@ -55,16 +94,18 @@ model User {
   username      String?   @unique
   password      String?   // Hashed
   email         String?   @unique
+  discordId     String?   @unique
   name          String?
   image         String?
   emailVerified DateTime?
   role          Role      @default(MEMBER)
-  orgId         String
-  org           Org       @relation(fields: [orgId], references: [id])
+  orgId         String?
+  org           Org?      @relation(fields: [orgId], references: [id])
   
   accounts      Account[]
   sessions      Session[]
   lootRequests  LootRequest[]
+  lootParticipations LootSessionParticipant[]
   distributions DistributionLog[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -173,8 +214,10 @@ model DistributionLog {
 
 model LootRequest {
   id            String   @id @default(cuid())
-  orgId         String
+  orgId         String   // The org making the request
   org           Org      @relation(fields: [orgId], references: [id])
+  
+  targetOrgId   String?  // The ally being requested from (null if local)
   
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -189,4 +232,45 @@ model LootRequest {
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model LootSession {
+  id            String   @id @default(cuid())
+  orgId         String
+  org           Org      @relation(fields: [orgId], references: [id])
+  
+  title         String
+  status        String   @default("ACTIVE") // ACTIVE, ARCHIVED
+  
+  items         LootSessionItem[]
+  participants  LootSessionParticipant[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model LootSessionItem {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       LootSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  itemId        String   // Reference to LootItem
+  name          String
+  category      String
+  imageUrl      String?
+  rarity        String   @default("COMMON") // COMMON, RARE, LEGENDARY
+}
+
+model LootSessionParticipant {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       LootSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  openedAt      DateTime?
+  wonItemName   String?
+  
+  @@unique([sessionId, userId])
 }

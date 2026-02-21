@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   UserPlus, 
   X, 
@@ -9,25 +9,45 @@ import {
   Shield,
   Mail,
   User as UserIcon,
-  Key
+  Key,
+  Building2,
+  Globe
 } from "lucide-react";
 import { Role } from "@prisma/client";
 import { createUser } from "@/app/actions/user";
 import { cn } from "@/lib/utils";
+import axios from "axios";
 
 interface AddUserDialogProps {
   orgId: string;
+  currentUserRole: string;
 }
 
-export function AddUserDialog({ orgId }: AddUserDialogProps) {
+export function AddUserDialog({ orgId, currentUserRole }: AddUserDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<Role>(Role.MEMBER);
+  const [selectedOrgId, setSelectedOrgId] = useState(orgId);
+  const [orgs, setOrgs] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const isSuperAdmin = currentUserRole === "SUPERADMIN";
+
+  useEffect(() => {
+    if (isOpen && isSuperAdmin) {
+      const fetchOrgs = async () => {
+        try {
+          const res = await axios.get("/api/orgs");
+          setOrgs(res.data);
+        } catch (err) {}
+      };
+      fetchOrgs();
+    }
+  }, [isOpen, isSuperAdmin]);
 
   const handleReset = () => {
     setUsername("");
@@ -35,6 +55,7 @@ export function AddUserDialog({ orgId }: AddUserDialogProps) {
     setEmail("");
     setName("");
     setRole(Role.MEMBER);
+    setSelectedOrgId(orgId);
     setError("");
   };
 
@@ -50,7 +71,7 @@ export function AddUserDialog({ orgId }: AddUserDialogProps) {
         email,
         name,
         role,
-        orgId
+        orgId: selectedOrgId
       });
 
       if (result.success) {
@@ -88,7 +109,9 @@ export function AddUserDialog({ orgId }: AddUserDialogProps) {
               <UserPlus className="w-5 h-5" />
               Provision Personnel
             </h2>
-            <p className="text-[10px] text-sc-gold/60 font-mono tracking-widest uppercase">Admin Authorization Required // SEC-LVL-ADMIN</p>
+            <p className="text-[10px] text-sc-gold/60 font-mono tracking-widest uppercase">
+              {isSuperAdmin ? "Global Root Authorization // SEC-LVL-SUPER" : "Admin Authorization Required // SEC-LVL-ADMIN"}
+            </p>
           </div>
           <button onClick={() => { setIsOpen(false); handleReset(); }} className="text-gray-500 hover:text-white transition-colors">
             <X className="w-5 h-5" />
@@ -100,6 +123,27 @@ export function AddUserDialog({ orgId }: AddUserDialogProps) {
           {error && (
             <div className="p-3 bg-sc-red/10 border border-sc-red/30 text-sc-red text-[10px] font-mono uppercase tracking-tighter">
               Error: {error}
+            </div>
+          )}
+
+          {/* Org Selection for SuperAdmin */}
+          {isSuperAdmin && (
+            <div className="space-y-2">
+              <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest flex items-center gap-2">
+                <Building2 className="w-3 h-3" /> Target Organization Node
+              </label>
+              <div className="relative">
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <select 
+                  value={selectedOrgId}
+                  onChange={(e) => setSelectedOrgId(e.target.value)}
+                  className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-sc-gold/50 appearance-none uppercase transition-all"
+                >
+                  {orgs.map(org => (
+                    <option key={org.id} value={org.id}>{org.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
 

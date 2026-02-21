@@ -26,9 +26,10 @@ interface ItemDetailsModalProps {
   itemName?: string | null; // New: support fetching by name
   onClose: () => void;
   orgId?: string; // Optional orgId for actions
+  isAlliedView?: boolean;
 }
 
-export function ItemDetailsModal({ itemId, itemName, onClose, orgId }: ItemDetailsModalProps) {
+export function ItemDetailsModal({ itemId, itemName, onClose, orgId, isAlliedView }: ItemDetailsModalProps) {
   const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -59,21 +60,29 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId }: ItemDetai
     };
 
     const fetchUsers = async () => {
-      if (!orgId) return;
+      if (!orgId || isAlliedView) return;
       try {
-        const res = await axios.get('/api/users');
+        // Fetch local users and allied users if applicable
+        const [localRes, allianceRes] = await Promise.all([
+          axios.get('/api/users'),
+          axios.get('/api/orgs/me') // Orgs/me now includes alliance data in some contexts, but let's be explicit
+        ]);
+        
+        // Let's assume we want to simplify and just fetch all eligible for this org
+        // I will update the users API to optionally include allies for superadmins/admins
+        const res = await axios.get('/api/users?includeAllies=true');
         setUsers(res.data);
       } catch (err) {}
     };
 
     fetchDetails();
     fetchUsers();
-  }, [itemId, itemName, orgId]);
+  }, [itemId, itemName, orgId, isAlliedView]);
 
   if (!itemId && !itemName) return null;
 
   const handleUpdateQty = async () => {
-    if (!item.isOrgItem) return;
+    if (!item.isOrgItem || isAlliedView) return;
     setIsActing(true);
     try {
       await updateLootItem(item.id, qty);
@@ -82,7 +91,7 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId }: ItemDetai
   };
 
   const handleAssign = async () => {
-    if (!selectedUserId || !orgId) return;
+    if (!selectedUserId || !orgId || isAlliedView) return;
     setIsActing(true);
     try {
       await assignItemToOperator({
@@ -129,7 +138,7 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId }: ItemDetai
           </div>
 
           {/* Tab Navigation */}
-          {item?.isOrgItem && (
+          {item?.isOrgItem && !isAlliedView && (
             <div className="flex gap-6">
               <button 
                 onClick={() => setActiveTab("info")}
@@ -200,7 +209,9 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId }: ItemDetai
                     >
                       <option value="">-- AWAITING OPERATOR SELECTION --</option>
                       {users.map(u => (
-                        <option key={u.id} value={u.id}>{u.name || u.email} [{u.role}]</option>
+                        <option key={u.id} value={u.id}>
+                          {u.name || u.email} [{u.role}] {u.org?.name ? `// ${u.org.name}` : ""}
+                        </option>
                       ))}
                     </select>
                   </div>

@@ -1,68 +1,77 @@
-# 🚀 DIXNCOX Org Loot Vault
+# 🚀 SC Org Loot Vault
 
 An immersive, high-tech Star Citizen Organization Loot Vault Manager. This platform allows Orgs to track, manage, and distribute loot (Ship Components, Weapons, and Armor) with a Star Citizen-inspired HUD aesthetic. Hosted locally on Mac mini, exposed via Cloudflare Tunnels, and backed by a robust multi-tenant architecture.
 
 ![License](https://img.shields.io/badge/Clearance-Level_9-blue?style=flat-square)
-![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
 ![Database](https://img.shields.io/badge/Database-SQLite/Prisma-blue?style=flat-square)
-![Theme](https://img.shields.io/badge/Theme-Star_Citizen_HUD-00D1FF?style=flat-square)
+![Theme](https://img.shields.io/badge/Theme-Dynamic_HUD-00D1FF?style=flat-square)
 
 ---
 
 ## 🛠 Technology Stack
 
-- **Framework:** Next.js 15 (App Router)
+- **Framework:** Next.js 16 (App Router / Turbopack)
 - **Language:** TypeScript
-- **Styling:** Tailwind CSS + `tailwindcss-animate`
+- **Styling:** Tailwind CSS 4 + `tailwindcss-animate`
 - **Database:** Prisma ORM with SQLite (Local-first)
-- **Authentication:** NextAuth.js (Discord & Google OAuth)
+- **Authentication:** NextAuth.js v4 (Credentials & Discord OAuth)
 - **API Integration:** Star Citizen Wiki API (Automatic Telemetry)
-- **Real-time:** Server Actions & Revalidation
+- **Real-time:** Server Actions, Revalidation, and Dynamic Polling
 - **Icons:** Lucide React
 
 ---
 
 ## ✨ Core Features
 
-### 📦 Vault Manifest Management
-- **Bulk Add:** Provision up to 100 items at once via a high-density batch interface.
-- **Smart Autocomplete:** Real-time search against a local cache of 1,200+ Star Citizen items.
-- **Google Sheets Sync:** Import entire loot pools from existing spreadsheets with a **Live Preview** verification step.
-- **Decommissioning:** One-off or bulk removal of assets from the organization manifest.
+### 📦 Intelligent Manifest Import
+- **Dual-Method Bridge:** Import via **Google Sheets Link** (auto GID extraction) or **Local CSV Upload**.
+- **Protocol Mapping:** Interactive interface to align your custom spreadsheet columns to the platform schema.
+- **Smart Detection:** Automatically skips instructional noise and empty rows to find the correct header data.
+- **Live Preview:** Verify parsed records before committing to the persistent organization manifest.
 
-### 🔭 Galactic Manifest (Master Database)
-- **Centralized Intelligence:** Browsable archive of all Ship Weapons, Shields, Missile Racks, Power Plants, Coolers, Quantum Drives, and FPS Gear.
-- **Telemetry Decryption:** Click any item to see full technical specifications, manufacturer data, and descriptions.
-- **External Bridge:** Direct links to the Star Citizen Tools wiki for every item.
+### 🤝 Alliance Network (Joint Ops)
+- **Diplomatic Handshakes:** Send and authorize alliance requests between organizations.
+- **Mutual Vault Visibility:** Allied orgs can browse each other's manifests in a secure, read-only mode.
+- **Cross-Org Requests:** Request specific loot directly from an ally's inventory.
+- **Joint Distributions:** Include allied personnel in your RNG drawings for combined operation events.
 
-### 🎡 Distribution & RNG System
-- **RNG Wheel:** An interactive, CSS-powered spinner for fair loot distribution.
-- **Auto-Decrement:** Winning a drawing automatically removes the item from the vault and updates the manifest.
-- **Audit Logs:** Every transaction is recorded in a persistent, chronological history log.
+### 🎡 Advanced RNG Distribution
+- **Dual Modes:** Toggle between **Operator Wheel** (winner gets pooled items) and **Item Roulette** (lone recipient wins one of many items).
+- **Dynamic Selection:** Real-time multi-select and "Select All" tools for designating eligible operators.
+- **Joint Selection:** Automatically includes allied personnel nodes when diplomatic links are active.
+- **High-Tech UI:** Sliding pill-toggle interface with glowing HUD accents and hardware-entropy simulation.
 
-### 👤 Personnel & RBAC
-- **Role-Based Access:** Standardized levels: `MEMBER`, `ADMIN`, and `SUPERADMIN`.
-- **Operator Tracking:** Monitor "Assigned Assets" to see exactly what gear is currently in which operator's hands.
-- **Personnel Hub:** Manage operator designations, comm-links, and security clearances.
+### 🤖 Discord Manifest Bridge
+- **Advanced Commands:** Supports both Prefix (`!vault`) and Slash (`/`) commands.
+- **Account Linking:** Tie Discord IDs to Vault Operator identities via `/link-account`.
+- **Remote Commands:** Access `/my-assets`, `/request-asset`, and `/vault-status` directly from your comms channel.
+- **Real-time Heartbeat:** Live "OPERATIONAL" status indicator in the dashboard with pulse tracking.
 
-### 🌌 Galactic Nexus (Multi-Tenant Hub)
-- **Organization Provisioning:** Create new Org nodes with unique subdomains (slugs).
-- **Whitelabeling:** Customize HUD colors, designations, and branding per organization.
-- **Global Control:** Monitor total users and asset counts across the entire network.
+### 🎨 Deep Customization & Branding
+- **Dynamic Theming:** Custom control over **Primary Background**, **Accent HUD**, **Secondary Highlights**, **Success**, and **Danger** colors.
+- **Identity Assets:** Upload local logo files (512x512) or link external resources.
+- **Global UI Overrides:** Customize header and footer designations per organization.
+- **bespoke Sidebar:** The entire navigation system reacts dynamically to your org's chosen color scheme.
+
+### 🌌 Nexus Core (Global Admin)
+- **Root Isolation:** The global admin (`ADMIN`) exists independently of specific organizations.
+- **Impersonation Protocol:** Direct control over any organization node for administrative oversight.
+- **Network Telemetry:** Oversee total organizations, global personnel, and network-wide asset counts.
 
 ---
 
 ## 📸 Interface Preview
 
-> **Note:** Captured from the live DIXNCOX Org Loot Vault interface.
+> **Note:** Captured from the live SC Org Loot Vault interface.
 
-| Command Dashboard | Vault Manifest | Galactic Archive |
+| Command Dashboard | Vault Manifest | RNG Distribution |
 | :--- | :--- | :--- |
-| ![Dashboard](screenshots/dashboard.png) | ![Vault](screenshots/vault.png) | ![Manifest](screenshots/manifest.png) |
+| ![Dashboard](screenshots/dashboard.png) | ![Vault](screenshots/vault.png) | ![Distribution](screenshots/vault.png) |
 
-| Personnel Hub | Galactic Nexus |
-| :--- | :--- |
-| ![Personnel](screenshots/personnel.png) | ![Nexus](screenshots/nexus.png) |
+| Alliance Network | Personnel Hub | Admin Settings |
+| :--- | :--- | :--- |
+| ![Alliance](screenshots/nexus.png) | ![Personnel](screenshots/personnel.png) | ![Settings](screenshots/nexus.png) |
 
 ---
 
@@ -84,13 +93,11 @@ Create a `.env` file in the root directory:
 ```env
 DATABASE_URL="file:./dev.db"
 NEXTAUTH_SECRET="your-secret-key"
-NEXTAUTH_URL="http://localhost:8081"
+NEXTAUTH_URL="https://vault.andypace.com"
 
 # OAuth Clearances
 DISCORD_CLIENT_ID="your-id"
 DISCORD_CLIENT_SECRET="your-secret"
-GOOGLE_CLIENT_ID="your-id"
-GOOGLE_CLIENT_SECRET="your-secret"
 ```
 
 ### 4. Initialize Database & Cache
@@ -100,15 +107,11 @@ npx ts-node scripts/seed-initial-org.ts
 npx ts-node scripts/seed-sc-items.ts
 ```
 
-### 5. Launch Development Link
+### 5. Start Service Manager
+Use the included shell script to manage PM2 processes:
 ```bash
-npm run dev -- -p 8081
-```
-
-### 6. Start Discord Manifest Bridge
-In a separate terminal node:
-```bash
-npx ts-node scripts/run-bot.ts
+chmod +x manage-vault.sh
+./manage-vault.sh restart
 ```
 
 ---
@@ -118,8 +121,8 @@ npx ts-node scripts/run-bot.ts
 This platform is optimized for local hosting on a Mac mini. To expose it to your Org members:
 
 1. **Cloudflare Tunnel:** Use `cloudflared` to route your local port `8081` to a public URL.
-2. **Firebase Auth:** Configure your Firebase project to handle Discord/Google handshakes.
-3. **Discord Bot:** Set up your bot token in the **Discord Bot** interface within the platform to enable `/loot search` and other commands.
+2. **Stealth Masking:** The application is designed to run inside an iframe via Firebase Hosting for a seamless domain experience.
+3. **Route Sync:** Integrated `postMessage` listeners ensure the browser address bar stays in sync between the parent window and the local node.
 
 ---
 
@@ -127,9 +130,9 @@ This platform is optimized for local hosting on a Mac mini. To expose it to your
 
 - **Node Version:** 20.x+
 - **Database Engine:** SQLite 3
-- **Handshake Protocol:** AES-256-X Encryption Simulation
+- **Styling:** Tailwind CSS 4.0
 - **Data Source:** [Star Citizen Wiki API](https://api.star-citizen.wiki/)
 
 ---
 
-Developed by **DIXNCOX Engineering** // 2954
+Developed by **SC Loot Vault Engineering** // 2956

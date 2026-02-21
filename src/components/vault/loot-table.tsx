@@ -14,38 +14,50 @@ import { removeLootItems, createLootRequest } from "@/app/actions/loot";
 import { cn } from "@/lib/utils";
 import { ItemDetailsModal } from "@/components/shared/item-details-modal";
 import { useSession } from "next-auth/react";
+import { Search, Filter, ArrowUpDown } from "lucide-react";
 
 interface LootTableProps {
   items: any[];
   orgId: string;
+  isAlliedView?: boolean;
+  targetOrgId?: string;
 }
 
-export function LootTable({ items, orgId }: LootTableProps) {
+export function LootTable({ items, orgId, isAlliedView, targetOrgId }: LootTableProps) {
   const { data: session }: any = useSession();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDeleting, setIsSubmitting] = useState(false);
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const [requestingId, setRequestingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredItems = items.filter(item => 
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.manufacturer?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleRequest = async (e: React.MouseEvent, item: any) => {
     e.stopPropagation();
     if (!session?.user) return;
     
-    if (!confirm(`Submit request for 1x ${item.name}?`)) return;
+    const requestTarget = isAlliedView ? "allied organization" : "Org leadership";
+    if (!confirm(`Submit request for 1x ${item.name} from ${requestTarget}?`)) return;
 
     setRequestingId(item.id);
     try {
       const res = await createLootRequest({
-        orgId,
+        orgId: session.user.orgId, // Always request FOR current user's org
         userId: session.user.id,
         itemId: item.id,
         itemName: item.name,
         category: item.category,
-        quantity: 1
+        quantity: 1,
+        targetOrgId: isAlliedView ? targetOrgId : null
       });
 
       if (res.success) {
-        alert("Request transmitted to Org leadership.");
+        alert(`Diplomatic request transmitted to ${requestTarget}.`);
       } else {
         alert("Request Failed: " + res.error);
       }
@@ -63,10 +75,10 @@ export function LootTable({ items, orgId }: LootTableProps) {
   };
 
   const toggleAll = () => {
-    if (selectedIds.length === items.length) {
+    if (selectedIds.length === filteredItems.length && filteredItems.length > 0) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(items.map(i => i.id));
+      setSelectedIds(filteredItems.map(i => i.id));
     }
   };
 
@@ -92,10 +104,40 @@ export function LootTable({ items, orgId }: LootTableProps) {
   return (
     <div className="space-y-4">
       {/* Detail Modal */}
-      <ItemDetailsModal itemId={detailItemId} onClose={() => setDetailItemId(null)} orgId={orgId} />
+      <ItemDetailsModal 
+        itemId={detailItemId} 
+        onClose={() => setDetailItemId(null)} 
+        orgId={orgId} 
+        isAlliedView={isAlliedView}
+      />
+
+      {/* Filter Bar */}
+      <div className="sc-glass p-4 flex flex-wrap items-center gap-4 border-b-2 border-sc-blue/30">
+        <div className="relative flex-1 min-w-[300px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="SEARCH VAULT (NAME / CATEGORY / MFG)..." 
+            className="w-full bg-black/40 border border-white/10 pl-10 pr-4 py-2 text-xs font-mono text-sc-blue focus:outline-none focus:border-sc-blue/50 transition-colors uppercase tracking-widest"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-[10px] font-mono text-sc-blue/40 uppercase mr-2">
+            Matches: {filteredItems.length}
+          </div>
+          <button className="p-2 bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-colors rounded">
+            <Filter className="w-4 h-4" />
+          </button>
+          <button className="p-2 bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-colors rounded">
+            <ArrowUpDown className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
 
       {/* Bulk Actions Bar */}
-      {selectedIds.length > 0 && (
+      {(selectedIds.length > 0 && !isAlliedView) && (
         <div className="bg-sc-red/10 border border-sc-red/30 p-4 rounded flex items-center justify-between animate-in slide-in-from-top-2 duration-300">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-sc-red animate-pulse" />
@@ -121,11 +163,13 @@ export function LootTable({ items, orgId }: LootTableProps) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-sc-blue/5 border-b border-sc-blue/20">
-              <th className="px-4 py-4 w-10">
-                <button onClick={toggleAll} className="text-gray-500 hover:text-sc-blue transition-colors">
-                  {selectedIds.length === items.length && items.length > 0 ? <CheckSquare className="w-4 h-4 text-sc-blue" /> : <Square className="w-4 h-4" />}
-                </button>
-              </th>
+              {!isAlliedView && (
+                <th className="px-4 py-4 w-10">
+                  <button onClick={toggleAll} className="text-gray-500 hover:text-sc-blue transition-colors">
+                    {selectedIds.length === filteredItems.length && filteredItems.length > 0 ? <CheckSquare className="w-4 h-4 text-sc-blue" /> : <Square className="w-4 h-4" />}
+                  </button>
+                </th>
+              )}
               <th className="px-6 py-4 text-[10px] font-bold text-sc-blue uppercase tracking-widest">Item Name</th>
               <th className="px-6 py-4 text-[10px] font-bold text-sc-blue uppercase tracking-widest">Category</th>
               <th className="px-6 py-4 text-[10px] font-bold text-sc-blue uppercase tracking-widest text-center">Qty</th>
@@ -136,9 +180,9 @@ export function LootTable({ items, orgId }: LootTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {items.length === 0 ? (
+            {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-20 text-center">
+                <td colSpan={isAlliedView ? 7 : 8} className="px-6 py-20 text-center">
                   <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center animate-pulse">
                       <Box className="w-6 h-6 text-gray-700" />
@@ -151,7 +195,7 @@ export function LootTable({ items, orgId }: LootTableProps) {
                 </td>
               </tr>
             ) : (
-              items.map((item) => (
+              filteredItems.map((item) => (
                 <tr 
                   key={item.id} 
                   className={cn(
@@ -160,11 +204,13 @@ export function LootTable({ items, orgId }: LootTableProps) {
                   )}
                   onClick={() => setDetailItemId(item.id)}
                 >
-                  <td className="px-4 py-4" onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}>
-                    <div className="flex items-center justify-center">
-                      {selectedIds.includes(item.id) ? <CheckSquare className="w-4 h-4 text-sc-red" /> : <Square className="w-4 h-4 text-gray-700 group-hover:text-gray-500" />}
-                    </div>
-                  </td>
+                  {!isAlliedView && (
+                    <td className="px-4 py-4" onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}>
+                      <div className="flex items-center justify-center">
+                        {selectedIds.includes(item.id) ? <CheckSquare className="w-4 h-4 text-sc-red" /> : <Square className="w-4 h-4 text-gray-700 group-hover:text-gray-500" />}
+                      </div>
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className={cn(
@@ -201,14 +247,16 @@ export function LootTable({ items, orgId }: LootTableProps) {
                         className="px-3 py-1 bg-sc-blue/10 hover:bg-sc-blue/20 border border-sc-blue/30 text-sc-blue text-[9px] font-bold uppercase rounded transition-all flex items-center gap-1 disabled:opacity-30"
                       >
                         {requestingId === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ChevronRight className="w-3 h-3" />}
-                        Request
+                        {isAlliedView ? "Request from Ally" : "Request"}
                       </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleDelete([item.id]); }}
-                        className="p-2 text-gray-700 hover:text-sc-red transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!isAlliedView && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleDelete([item.id]); }}
+                          className="p-2 text-gray-700 hover:text-sc-red transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

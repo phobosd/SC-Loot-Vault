@@ -86,11 +86,14 @@ export function UserTable({ initialUsers, currentUserRole }: UserTableProps) {
                           user.name?.substring(0, 2).toUpperCase() || user.username?.substring(0, 2).toUpperCase() || "UN"
                         )}
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-white tracking-wide uppercase">{user.name || user.username || "Unknown"}</p>
-                        <p className="text-[10px] text-gray-500 font-mono">{user.email || "NO_COMM_LINK"}</p>
-                      </div>
-                    </div>
+                                          <div>
+                                            <p className="text-sm font-semibold text-white tracking-wide uppercase">{user.name || user.username || "Unknown"}</p>
+                                            <p className="text-[10px] text-gray-500 font-mono flex items-center gap-2">
+                                              <span className="text-sc-blue/60">{user.username}</span>
+                                              <span className="opacity-30">|</span>
+                                              {user.email || "NO_COMM_LINK"}
+                                            </p>
+                                          </div>                    </div>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span className="text-[10px] text-sc-blue font-mono uppercase tracking-widest border border-sc-blue/20 px-2 py-1 bg-sc-blue/5 rounded">

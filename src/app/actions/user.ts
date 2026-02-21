@@ -67,6 +67,8 @@ export async function updateUser(userId: string, data: {
   name?: string;
   role: Role;
   password?: string;
+  orgId?: string;
+  username?: string;
 }) {
   try {
     const updateData: any = {
@@ -75,8 +77,16 @@ export async function updateUser(userId: string, data: {
       role: data.role,
     };
 
+    if (data.username) {
+      updateData.username = data.username.toUpperCase();
+    }
+
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 10);
+    }
+
+    if (data.orgId) {
+      updateData.orgId = data.orgId;
     }
 
     await prisma.user.update({

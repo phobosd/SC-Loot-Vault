@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   MoreVertical, 
   Trash2, 
@@ -17,6 +17,7 @@ import { updateOrg, deleteOrg } from "@/app/actions/org";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import axios from "axios";
+import { createPortal } from "react-dom";
 
 interface OrgRowActionsProps {
   org: {
@@ -33,21 +34,28 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
-  // ... (existing state)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleImpersonateAdmin = async () => {
     setLoading(true);
     try {
-      // Fetch the first admin/superadmin for this org to impersonate
-      const res = await axios.get(`/api/users?orgId=${org.id}&role=ADMIN`);
-      const admin = res.data[0];
+      const res = await axios.get(`/api/users?orgId=${org.id}`);
+      const users = res.data;
+      const lead = users.find((u: any) => u.role === 'SUPERADMIN') || 
+                   users.find((u: any) => u.role === 'ADMIN') ||
+                   users[0];
       
-      if (admin) {
-        await update({ impersonateId: admin.id });
+      if (lead) {
+        await update({ impersonateId: lead.id });
         window.location.href = "/dashboard";
       } else {
-        alert("No administrative nodes found for this organization. Provision an admin first.");
+        alert("No active personnel nodes detected for this organization.");
       }
     } catch (err) {
       console.error(err);
@@ -60,6 +68,18 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
   const [slug, setSlug] = useState(org.slug);
   const [primary, setPrimary] = useState(org.primaryColor);
   const [accent, setAccent] = useState(org.accentColor);
+
+  const toggleMenu = () => {
+    if (!isMenuOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      // Position the menu below the button, aligned to the right edge
+      setMenuPosition({ 
+        top: rect.bottom + window.scrollY, 
+        left: rect.right - 224 // 224px is the width of the menu (w-56)
+      });
+    }
+    setIsMenuOpen(!isMenuOpen);
+  };
 
   const handleDelete = async () => {
     if (!confirm(`CRITICAL: You are about to decommission the entire ${org.name} organization. All manifest data, operators, and history will be purged. Proceed?`)) return;
@@ -92,35 +112,48 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
   };
 
   return (
-    <div className="relative">
-      <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 hover:bg-sc-blue/10 text-gray-500 hover:text-sc-blue rounded transition-colors">
-        <MoreVertical className="w-4 h-4" />
-      </button>
+    <>
+      <div className="relative inline-block">
+        <button 
+          ref={buttonRef}
+          onClick={toggleMenu} 
+          className="p-2 hover:bg-sc-blue/10 text-gray-500 hover:text-sc-blue rounded transition-colors"
+        >
+          <MoreVertical className="w-4 h-4" />
+        </button>
 
-      {isMenuOpen && (
-        <>
-          <div className="fixed inset-0 z-[100]" onClick={() => setIsMenuOpen(false)} />
-          <div className="absolute right-0 mt-2 w-56 sc-glass border border-sc-blue/50 rounded shadow-2xl z-[110] bg-[#0A0A12] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-1">
-              <button 
-                onClick={handleImpersonateAdmin}
-                className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-sc-blue hover:bg-sc-blue/10 transition-colors rounded mb-1"
-              >
-                <Ghost className="w-3 h-3" /> Impersonate Lead Admin
-              </button>
-              <button onClick={() => { setIsEditOpen(true); setIsMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-gray-400 hover:bg-sc-blue/10 hover:text-sc-blue transition-colors rounded">
-                <Edit className="w-3 h-3" /> Edit Org Node
-              </button>
-              <button onClick={handleDelete} className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-sc-red/60 hover:bg-sc-red/10 hover:text-sc-red transition-colors rounded">
-                <Trash2 className="w-3 h-3" /> Decommission Org
-              </button>
+        {isMenuOpen && mounted && createPortal(
+          <>
+            <div className="fixed inset-0 z-[9998]" onClick={() => setIsMenuOpen(false)} />
+            <div 
+              className="fixed w-56 sc-glass border border-sc-blue/50 rounded shadow-2xl z-[9999] bg-[#0A0A12] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+              style={{ 
+                top: `${menuPosition.top + 8}px`, 
+                left: `${menuPosition.left}px` 
+              }}
+            >
+              <div className="p-1">
+                <button 
+                  onClick={handleImpersonateAdmin}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-sc-blue hover:bg-sc-blue/10 transition-colors rounded mb-1"
+                >
+                  <Ghost className="w-3 h-3" /> Impersonate Lead Admin
+                </button>
+                <button onClick={() => { setIsEditOpen(true); setIsMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-gray-400 hover:bg-sc-blue/10 hover:text-sc-blue transition-colors rounded">
+                  <Edit className="w-3 h-3" /> Edit Org Node
+                </button>
+                <button onClick={handleDelete} className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-sc-red/60 hover:bg-sc-red/10 hover:text-sc-red transition-colors rounded">
+                  <Trash2 className="w-3 h-3" /> Decommission Org
+                </button>
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </>,
+          document.body
+        )}
+      </div>
 
-      {isEditOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      {isEditOpen && mounted && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="sc-glass w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-sc-blue/30 shadow-2xl">
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-sc-blue/5">
               <div>
@@ -164,8 +197,9 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }

@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function addLootItems(items: {
   orgId: string;
@@ -15,7 +17,6 @@ export async function addLootItems(items: {
   manufacturer?: string | null;
 }[]) {
   try {
-    // Filter out items with no name
     const validItems = items.filter(i => i.name.trim() !== "");
     
     if (validItems.length === 0) return { success: false, error: "No valid items to add." };
@@ -37,10 +38,15 @@ export async function addLootItems(items: {
 }
 
 export async function removeLootItems(itemIds: string[]) {
+  const session: any = await getServerSession(authOptions);
+  if (!session?.user?.orgId) throw new Error("Unauthorized");
+
   try {
+    // Only delete items that belong to the user's organization
     await prisma.lootItem.deleteMany({
       where: {
-        id: { in: itemIds }
+        id: { in: itemIds },
+        orgId: session.user.orgId
       }
     });
     revalidatePath("/vault");
@@ -85,11 +91,18 @@ export async function createLootRequest(data: {
   itemName: string;
   category: string;
   quantity: number;
+  targetOrgId?: string | null;
 }) {
   try {
     const request = await prisma.lootRequest.create({
       data: {
-        ...data,
+        orgId: data.orgId,
+        userId: data.userId,
+        itemId: data.itemId,
+        itemName: data.itemName,
+        category: data.category,
+        quantity: data.quantity,
+        targetOrgId: data.targetOrgId || null,
         status: "PENDING"
       }
     });

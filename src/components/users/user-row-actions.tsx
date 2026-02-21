@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   MoreVertical, 
   Shield, 
@@ -13,19 +13,24 @@ import {
   X,
   Mail,
   User as UserIcon,
-  Ghost
+  Ghost,
+  Building2,
+  Globe
 } from "lucide-react";
 import { Role } from "@prisma/client";
 import { updateUser, deleteUser } from "@/app/actions/user";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
+import axios from "axios";
 
 interface UserRowActionsProps {
   user: {
     id: string;
     name: string | null;
+    username: string | null;
     email: string | null;
     role: Role;
+    orgId: string;
   };
 }
 
@@ -37,12 +42,27 @@ export function UserRowActions({ user }: UserRowActionsProps) {
 
   // Edit form state
   const [name, setName] = useState(user.name || "");
+  const [username, setUsername] = useState(user.username || "");
   const [email, setEmail] = useState(user.email || "");
   const [role, setRole] = useState<Role>(user.role);
   const [password, setPassword] = useState("");
+  const [selectedOrgId, setSelectedOrgId] = useState(user.orgId);
+  const [orgs, setOrgs] = useState<any[]>([]);
 
   const isSuperAdmin = session?.user?.role === "SUPERADMIN";
   const isMe = session?.user?.id === user.id;
+
+  useEffect(() => {
+    if (isEditOpen && isSuperAdmin) {
+      const fetchOrgs = async () => {
+        try {
+          const res = await axios.get("/api/orgs");
+          setOrgs(res.data);
+        } catch (err) {}
+      };
+      fetchOrgs();
+    }
+  }, [isEditOpen, isSuperAdmin]);
 
   const handleImpersonate = async () => {
     setLoading(true);
@@ -67,7 +87,14 @@ export function UserRowActions({ user }: UserRowActionsProps) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await updateUser(user.id, { name, email, role, password: password || undefined });
+      const res = await updateUser(user.id, { 
+        name, 
+        username,
+        email, 
+        role, 
+        password: password || undefined,
+        orgId: isSuperAdmin ? selectedOrgId : undefined
+      });
       if (res.success) {
         setIsEditOpen(false);
         setIsMenuOpen(false);
@@ -139,8 +166,28 @@ export function UserRowActions({ user }: UserRowActionsProps) {
             </div>
 
             <form onSubmit={handleUpdate} className="p-6 space-y-5">
+              {isSuperAdmin && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest flex items-center gap-2">
+                    <Building2 className="w-3 h-3" /> Organization Node
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <select 
+                      value={selectedOrgId}
+                      onChange={(e) => setSelectedOrgId(e.target.value)}
+                      className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-3 text-xs font-mono text-white focus:outline-none focus:border-sc-blue/50 appearance-none uppercase transition-all"
+                    >
+                      {orgs.map(org => (
+                        <option key={org.id} value={org.id}>{org.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
-                <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Designation</label>
+                <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Operator Name (Display)</label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input 
@@ -148,6 +195,19 @@ export function UserRowActions({ user }: UserRowActionsProps) {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-blue/50"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Designation (Username)</label>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input 
+                    type="text" 
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toUpperCase())}
+                    className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-blue/50 uppercase"
                   />
                 </div>
               </div>

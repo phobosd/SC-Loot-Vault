@@ -7,9 +7,12 @@ import {
   Zap,
   Box,
   Cpu,
-  Trophy
+  Trophy,
+  ArrowRight,
+  Plus
 } from "lucide-react";
 import { LootRequestManager } from "@/components/dashboard/loot-request-manager";
+import { AddItemDialog } from "@/components/vault/add-item-dialog";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -21,39 +24,44 @@ export default async function Dashboard() {
     redirect("/login");
   }
 
-  const org = await prisma.org.findUnique({
-    where: { id: session.user.orgId }
-  });
+  const org = session.user.orgId 
+    ? await prisma.org.findUnique({ where: { id: session.user.orgId } })
+    : null;
 
-  if (!org) return <div>No Org context.</div>;
+  const isSuperAdmin = session.user.role === 'SUPERADMIN';
 
-  // Logic for pending requests: SUPERADMIN sees all, ADMIN sees only their org
-  const requestWhere: any = { status: "PENDING" };
-  if (session.user.role !== 'SUPERADMIN') {
-    requestWhere.orgId = org.id;
-  }
+  // Fetch pending alliance requests for local org admin
+  const allianceRequests = org ? await prisma.allianceRequest.findMany({
+    where: { targetOrgId: org.id, status: "PENDING" },
+    include: { sender: true }
+  }) : [];
 
+  // Logic for data fetching: SUPERADMIN (Global) vs ADMIN/MEMBER (Local)
   const [itemCount, userCount, recentLogs, pendingRequests] = await Promise.all([
-    prisma.lootItem.count({ where: { orgId: org.id } }),
-    prisma.user.count({ where: { orgId: org.id } }),
+    prisma.lootItem.count({ 
+      where: isSuperAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' } 
+    }),
+    prisma.user.count({ 
+      where: isSuperAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' } 
+    }),
     prisma.distributionLog.findMany({
-      where: { orgId: org.id },
+      where: isSuperAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' },
       take: 5,
       orderBy: { timestamp: 'desc' }
     }),
     prisma.lootRequest.findMany({
-      where: requestWhere,
+      where: isSuperAdmin ? { status: "PENDING" } : { orgId: org?.id || 'UNDEFINED', status: "PENDING" },
       include: {
         user: true,
-        org: true // Include org to show which org it belongs to
+        org: true 
       },
       orderBy: { createdAt: 'desc' }
     })
   ]);
 
   const stats = [
-    { name: "Total Items", value: itemCount.toString(), icon: Package, color: "text-sc-blue", href: "/superadmin/manifest" },
-    { name: "Org Members", value: userCount.toString(), icon: Users, color: "text-sc-green", href: "/users" },
+    { name: isSuperAdmin && !org ? "Network Assets" : "Total Items", value: itemCount.toString(), icon: Package, color: "text-sc-blue", href: "/superadmin/manifest" },
+    { name: isSuperAdmin && !org ? "Global Personnel" : "Org Members", value: userCount.toString(), icon: Users, color: "text-sc-green", href: "/users" },
     { name: "Recent Draws", value: recentLogs.length.toString(), icon: Trophy, color: "text-sc-gold", href: "/logs" },
   ];
 
@@ -62,10 +70,10 @@ export default async function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white uppercase font-mono">
-            Command Dashboard
+            {isSuperAdmin && !org ? "Nexus Core Dashboard" : "Command Dashboard"}
           </h1>
-          <p className="text-sm text-sc-blue/60 mt-2 font-mono tracking-wider">
-            SYSTEM STATUS: MONITORING VAULT // ACCESS: {session.user.role}
+          <p className="text-sm text-sc-blue/60 mt-2 font-mono tracking-wider uppercase">
+            SYSTEM STATUS: {isSuperAdmin && !org ? "MONITORING GLOBAL NETWORK" : `MONITORING VAULT // ${org?.name}`} // ACCESS: {session.user.role}
           </p>
         </div>
         <div className="sc-glass px-4 py-2 border-sc-blue/30 rounded flex items-center gap-3">
@@ -73,6 +81,24 @@ export default async function Dashboard() {
           <span className="text-[10px] text-sc-blue font-mono uppercase tracking-[0.2em]">Live Data Sync: ACTIVE</span>
         </div>
       </div>
+
+      {/* Alliance Handshake Alert */}
+      {allianceRequests.length > 0 && (
+        <Link href="/alliances" className="block p-4 bg-sc-gold/10 border border-sc-gold/30 rounded flex items-center justify-between hover:bg-sc-gold/20 transition-all group animate-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 sc-hud-corner bg-sc-gold/5 flex items-center justify-center border border-sc-gold/20">
+              <Zap className="w-5 h-5 text-sc-gold animate-pulse" />
+            </div>
+            <div>
+              <p className="text-[10px] font-mono text-sc-gold/60 uppercase tracking-widest">Incoming Diplomatic Handshake</p>
+              <p className="text-sm font-bold text-white uppercase">{allianceRequests[0].sender.name} requests an alliance protocol</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] font-black text-sc-gold uppercase tracking-widest group-hover:gap-4 transition-all">
+            Review Request <ArrowRight className="w-4 h-4" />
+          </div>
+        </Link>
+      )}
 
       {/* Pending Requests Section (Admins Only) */}
       {(session.user.role === 'ADMIN' || session.user.role === 'SUPERADMIN') && (
@@ -134,9 +160,16 @@ export default async function Dashboard() {
               <Link href="/distributions" className="block w-full text-left py-3 px-4 rounded bg-sc-blue/20 hover:bg-sc-blue/30 border border-sc-blue/30 text-sc-blue text-xs font-bold uppercase tracking-widest transition-all">
                 Start RNG Drawing
               </Link>
-              <Link href="/vault" className="block w-full text-left py-3 px-4 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-widest transition-all">
-                Manual Item Entry
-              </Link>
+              {org && (
+                <AddItemDialog 
+                  orgId={org.id} 
+                  trigger={
+                    <button className="w-full text-left py-3 px-4 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-widest transition-all">
+                      Manual Item Entry
+                    </button>
+                  } 
+                />
+              )}
               <Link href="/superadmin/manifest" className="block w-full text-left py-3 px-4 rounded bg-sc-gold/10 hover:bg-sc-gold/20 border border-sc-gold/30 text-sc-gold text-xs font-bold uppercase tracking-widest transition-all">
                 Browse Global Manifest
               </Link>

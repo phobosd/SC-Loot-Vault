@@ -17,9 +17,10 @@ import { addLootItems } from "@/app/actions/loot";
 
 interface AddItemDialogProps {
   orgId: string;
+  trigger?: React.ReactNode;
 }
 
-export function AddItemDialog({ orgId }: AddItemDialogProps) {
+export function AddItemDialog({ orgId, trigger }: AddItemDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<any | null>(null);
@@ -88,6 +89,9 @@ export function AddItemDialog({ orgId }: AddItemDialogProps) {
   };
 
   if (!isOpen) {
+    if (trigger) {
+      return <div onClick={() => setIsOpen(true)} className="cursor-pointer">{trigger}</div>;
+    }
     return (
       <button 
         onClick={() => setIsOpen(true)}

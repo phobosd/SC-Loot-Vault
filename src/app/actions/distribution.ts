@@ -123,3 +123,107 @@ export async function recordDistribution(data: {
     return { success: false, error: error.message };
   }
 }
+
+export async function createLootSession(data: {
+  orgId: string;
+  title: string;
+  itemIds: string[]; // List of IDs from LootItem
+  participantIds: string[];
+}) {
+  try {
+    const items = await prisma.lootItem.findMany({
+      where: { id: { in: data.itemIds } }
+    });
+
+    const session = await prisma.lootSession.create({
+      data: {
+        orgId: data.orgId,
+        title: data.title,
+        status: "ACTIVE",
+        items: {
+          create: items.map(item => ({
+            itemId: item.id,
+            name: item.name,
+            category: item.category,
+            rarity: "COMMON" // Randomize rarities or let admin pick? Default common for now.
+          }))
+        },
+        participants: {
+          create: data.participantIds.map(userId => ({
+            userId
+          }))
+        }
+      }
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/distributions");
+    return { success: true, sessionId: session.id };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function claimLootSessionItem(data: {
+  sessionId: string;
+  userId: string;
+  wonItemName: string;
+  lootItemId: string; // The specific vault item
+}) {
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Mark participant as having opened
+      await tx.lootSessionParticipant.update({
+        where: {
+          sessionId_userId: {
+            sessionId: data.sessionId,
+            userId: data.userId
+          }
+        },
+        data: {
+          openedAt: new Date(),
+          wonItemName: data.wonItemName
+        }
+      });
+
+      // 2. Get the item from vault
+      const item = await tx.lootItem.findUnique({
+        where: { id: data.lootItemId }
+      });
+
+      if (!item || item.quantity < 1) {
+        throw new Error("Target asset manifest depleted or offline.");
+      }
+
+      // 3. Create assignment log
+      const log = await tx.distributionLog.create({
+        data: {
+          orgId: item.orgId,
+          recipientId: data.userId,
+          itemName: data.wonItemName,
+          quantity: 1,
+          type: "ASSIGNED",
+          method: "CRATE_OPENING"
+        }
+      });
+
+      // 4. Update vault
+      if (item.quantity <= 1) {
+        await tx.lootItem.delete({ where: { id: data.lootItemId } });
+      } else {
+        await tx.lootItem.update({
+          where: { id: data.lootItemId },
+          data: { quantity: { decrement: 1 } }
+        });
+      }
+
+      return log;
+    });
+
+    revalidatePath("/vault");
+    revalidatePath("/assigned");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
