@@ -9,12 +9,22 @@ import { ImportButton } from "@/components/vault/import-button";
 import { BulkAddLootDialog } from "@/components/vault/bulk-add-loot-dialog";
 import { AddItemDialog } from "@/components/vault/add-item-dialog";
 import { LootTable } from "@/components/vault/loot-table";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export default async function VaultPage() {
-  // Fetch first Org (for now)
-  const org = await prisma.org.findFirst();
+  const session: any = await getServerSession(authOptions);
   
-  if (!org) return <div className="text-sc-red font-mono p-10 sc-glass border border-sc-red/30">NO ORG CONTEXT DETECTED // PLEASE RUN INITIAL SEEDING</div>;
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const org = await prisma.org.findUnique({
+    where: { id: session.user.orgId }
+  });
+  
+  if (!org) return <div className="p-10 text-sc-red font-mono sc-glass border border-sc-red/20 uppercase tracking-widest text-xs">Org Context Corrupted</div>;
 
   const lootItems = await prisma.lootItem.findMany({
     where: { orgId: org.id },

@@ -24,6 +24,7 @@ const TARGET_CLASSIFICATIONS = [
   'Ship.Cooler',
   'Ship.QuantumDrive',
   'FPS.Weapon',
+  'FPS.Armor',
   'CharArmor'
 ];
 
@@ -65,12 +66,16 @@ async function seed() {
 
       if (filteredItems.length > 0) {
         console.log(`Page ${page}: Processing ${filteredItems.length} items...`);
+        
+        // Deduplicate within the current page by name to prevent P2002 errors
+        const uniqueItems = Array.from(new Map(filteredItems.map((item: any) => [item.name, item])).values());
+
         // Use a transaction or batch to speed things up
-        await Promise.all(filteredItems.map(async (item: any) => {
+        await Promise.all(uniqueItems.map(async (item: any) => {
           await prisma.sCItemCache.upsert({
-            where: { wikiId: item.uuid },
+            where: { name: item.name }, // Use name as the primary unique key for manifest
             update: {
-              name: item.name,
+              wikiId: item.uuid,
               type: item.type || item.classification || 'Unknown',
               subType: item.sub_type || null,
               manufacturer: item.manufacturer?.name || null,

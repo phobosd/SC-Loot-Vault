@@ -66,15 +66,22 @@ export async function updateUser(userId: string, data: {
   email?: string;
   name?: string;
   role: Role;
+  password?: string;
 }) {
   try {
+    const updateData: any = {
+      email: data.email || null,
+      name: data.name,
+      role: data.role,
+    };
+
+    if (data.password) {
+      updateData.password = await bcrypt.hash(data.password, 10);
+    }
+
     await prisma.user.update({
       where: { id: userId },
-      data: {
-        email: data.email || null,
-        name: data.name,
-        role: data.role,
-      },
+      data: updateData,
     });
     revalidatePath("/users");
     return { success: true };

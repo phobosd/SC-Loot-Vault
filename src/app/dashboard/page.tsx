@@ -9,18 +9,45 @@ import {
   Cpu,
   Trophy
 } from "lucide-react";
+import { LootRequestManager } from "@/components/dashboard/loot-request-manager";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export default async function Dashboard() {
-  const org = await prisma.org.findFirst();
+  const session: any = await getServerSession(authOptions);
+  
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const org = await prisma.org.findUnique({
+    where: { id: session.user.orgId }
+  });
+
   if (!org) return <div>No Org context.</div>;
 
-  const [itemCount, userCount, recentLogs] = await Promise.all([
+  // Logic for pending requests: SUPERADMIN sees all, ADMIN sees only their org
+  const requestWhere: any = { status: "PENDING" };
+  if (session.user.role !== 'SUPERADMIN') {
+    requestWhere.orgId = org.id;
+  }
+
+  const [itemCount, userCount, recentLogs, pendingRequests] = await Promise.all([
     prisma.lootItem.count({ where: { orgId: org.id } }),
     prisma.user.count({ where: { orgId: org.id } }),
     prisma.distributionLog.findMany({
       where: { orgId: org.id },
       take: 5,
       orderBy: { timestamp: 'desc' }
+    }),
+    prisma.lootRequest.findMany({
+      where: requestWhere,
+      include: {
+        user: true,
+        org: true // Include org to show which org it belongs to
+      },
+      orderBy: { createdAt: 'desc' }
     })
   ]);
 
@@ -38,7 +65,7 @@ export default async function Dashboard() {
             Command Dashboard
           </h1>
           <p className="text-sm text-sc-blue/60 mt-2 font-mono tracking-wider">
-            SYSTEM STATUS: MONITORING ALL LOOT VAULTS // ACCESS: SUPERADMIN
+            SYSTEM STATUS: MONITORING VAULT // ACCESS: {session.user.role}
           </p>
         </div>
         <div className="sc-glass px-4 py-2 border-sc-blue/30 rounded flex items-center gap-3">
@@ -46,6 +73,11 @@ export default async function Dashboard() {
           <span className="text-[10px] text-sc-blue font-mono uppercase tracking-[0.2em]">Live Data Sync: ACTIVE</span>
         </div>
       </div>
+
+      {/* Pending Requests Section (Admins Only) */}
+      {(session.user.role === 'ADMIN' || session.user.role === 'SUPERADMIN') && (
+        <LootRequestManager requests={pendingRequests} />
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

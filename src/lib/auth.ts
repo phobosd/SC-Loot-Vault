@@ -17,7 +17,7 @@ const providers: any[] = [
 
         try {
           const user = await prisma.user.findUnique({
-            where: { username: credentials.username },
+            where: { username: credentials.username.toUpperCase() },
             include: { org: true }
           });
 

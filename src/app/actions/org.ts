@@ -86,6 +86,48 @@ export async function updateOrgDiscord(orgId: string, data: {
   }
 }
 
+export async function updateOrgSettings(orgId: string, data: {
+  name: string;
+  primaryColor: string;
+  accentColor: string;
+  logoUrl?: string | null;
+  headerText?: string | null;
+  footerText?: string | null;
+}) {
+  try {
+    await prisma.$transaction([
+      prisma.org.update({
+        where: { id: orgId },
+        data: {
+          name: data.name,
+          primaryColor: data.primaryColor,
+          accentColor: data.accentColor,
+          logoUrl: data.logoUrl,
+        }
+      }),
+      prisma.whitelabelConfig.upsert({
+        where: { orgId: orgId },
+        update: {
+          headerText: data.headerText,
+          footerText: data.footerText,
+        },
+        create: {
+          orgId: orgId,
+          headerText: data.headerText,
+          footerText: data.footerText,
+        }
+      })
+    ]);
+    
+    revalidatePath("/settings");
+    revalidatePath("/dashboard");
+    revalidatePath("/vault");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function submitOrgRequest(data: {
   name: string;
   slug: string;

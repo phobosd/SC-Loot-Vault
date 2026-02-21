@@ -22,12 +22,13 @@ import { updateLootItem } from "@/app/actions/loot";
 import { assignItemToOperator } from "@/app/actions/distribution";
 
 interface ItemDetailsModalProps {
-  itemId: string | null;
+  itemId?: string | null;
+  itemName?: string | null; // New: support fetching by name
   onClose: () => void;
   orgId?: string; // Optional orgId for actions
 }
 
-export function ItemDetailsModal({ itemId, onClose, orgId }: ItemDetailsModalProps) {
+export function ItemDetailsModal({ itemId, itemName, onClose, orgId }: ItemDetailsModalProps) {
   const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -40,13 +41,14 @@ export function ItemDetailsModal({ itemId, onClose, orgId }: ItemDetailsModalPro
   const [selectedUserId, setSelectedUserId] = useState("");
 
   useEffect(() => {
-    if (!itemId) return;
+    if (!itemId && !itemName) return;
 
     const fetchDetails = async () => {
       setLoading(true);
       setError("");
       try {
-        const res = await axios.get(`/api/sc-items/${encodeURIComponent(itemId)}`);
+        const identifier = itemId || `name:${itemName}`;
+        const res = await axios.get(`/api/sc-items/${encodeURIComponent(identifier)}`);
         setItem(res.data);
         setQty(res.data.quantity || 1);
       } catch (err: any) {
@@ -59,16 +61,16 @@ export function ItemDetailsModal({ itemId, onClose, orgId }: ItemDetailsModalPro
     const fetchUsers = async () => {
       if (!orgId) return;
       try {
-        const res = await axios.get('/api/users'); // I'll need to create this simple list API
+        const res = await axios.get('/api/users');
         setUsers(res.data);
       } catch (err) {}
     };
 
     fetchDetails();
     fetchUsers();
-  }, [itemId, orgId]);
+  }, [itemId, itemName, orgId]);
 
-  if (!itemId) return null;
+  if (!itemId && !itemName) return null;
 
   const handleUpdateQty = async () => {
     if (!item.isOrgItem) return;

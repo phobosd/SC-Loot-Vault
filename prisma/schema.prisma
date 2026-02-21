@@ -23,6 +23,7 @@ model Org {
   
   users             User[]
   lootItems         LootItem[]
+  lootRequests      LootRequest[]
   distributionLogs  DistributionLog[]
   whitelabelConfig  WhitelabelConfig?
   createdAt         DateTime          @default(now())
@@ -63,6 +64,7 @@ model User {
   
   accounts      Account[]
   sessions      Session[]
+  lootRequests  LootRequest[]
   distributions DistributionLog[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -137,7 +139,7 @@ model LootItem {
 model SCItemCache {
   id           String   @id @default(cuid())
   wikiId       String   @unique
-  name         String
+  name         String   @unique
   type         String   // component, weapon, armor, etc.
   subType      String?
   manufacturer String?
@@ -158,13 +160,33 @@ model DistributionLog {
   org         Org      @relation(fields: [orgId], references: [id])
   
   recipientId String?
-  recipient   User?    @relation(fields: [recipientId], references: [id])
+  recipient   User?    @relation(fields: [recipientId], references: [id], onDelete: Cascade)
   
   itemName    String
   quantity    Int
-  type        String   // "GIVEAWAY", "MANUAL", "WITHDRAWN"
-  method      String   // "RNG_WHEEL", "ADMIN_ASSIGN"
+  type        String   // "GIVEAWAY", "MANUAL", "WITHDRAWN", "ASSIGNED"
+  method      String   // "RNG_WHEEL", "ADMIN_ASSIGN", "REQUEST_APPROVAL"
   
   performedBy String?  // Admin who did the action
   timestamp   DateTime @default(now())
+}
+
+model LootRequest {
+  id            String   @id @default(cuid())
+  orgId         String
+  org           Org      @relation(fields: [orgId], references: [id])
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  itemId        String
+  itemName      String
+  category      String
+  quantity      Int      @default(1)
+  
+  status        String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  denialReason  String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

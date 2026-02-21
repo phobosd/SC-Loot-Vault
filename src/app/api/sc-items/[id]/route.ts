@@ -6,25 +6,33 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  let identifier = id;
+  let isNameLookup = false;
+
+  if (id.startsWith("name:")) {
+    identifier = decodeURIComponent(id.replace("name:", ""));
+    isNameLookup = true;
+  }
 
   try {
-    console.log(`[TELEMETRY] Fetching data for: ${id}`);
-    // Try to find in Cache first (Master Manifest)
+    console.log(`[TELEMETRY] Fetching data for: ${identifier} (isNameLookup: ${isNameLookup})`);
+    
+    // 1. Try to find in Cache first (Master Manifest)
     let item = await prisma.sCItemCache.findFirst({
       where: {
         OR: [
-          { id: id },
-          { wikiId: id },
-          { name: id }
+          { id: identifier },
+          { wikiId: identifier },
+          { name: identifier }
         ]
       }
     });
 
-    // If not found in cache, check Org Loot items
-    if (!item) {
-      console.log(`[TELEMETRY] Not in cache, checking LootItem: ${id}`);
+    // 2. If not found in cache and not explicitly a name lookup, check Org Loot items by ID
+    if (!item && !isNameLookup) {
+      console.log(`[TELEMETRY] Not in cache, checking LootItem: ${identifier}`);
       const lootItem = await prisma.lootItem.findUnique({
-        where: { id: id }
+        where: { id: identifier }
       });
       
       if (lootItem) {
@@ -61,7 +69,7 @@ export async function GET(
     }
 
     if (!item) {
-      console.log(`[TELEMETRY] 404 - Item not found: ${id}`);
+      console.log(`[TELEMETRY] 404 - Item not found: ${identifier}`);
       return NextResponse.json({ error: "Item not found in master manifest." }, { status: 404 });
     }
 

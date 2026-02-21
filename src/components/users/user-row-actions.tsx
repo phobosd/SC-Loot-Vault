@@ -39,6 +39,7 @@ export function UserRowActions({ user }: UserRowActionsProps) {
   const [name, setName] = useState(user.name || "");
   const [email, setEmail] = useState(user.email || "");
   const [role, setRole] = useState<Role>(user.role);
+  const [password, setPassword] = useState("");
 
   const isSuperAdmin = session?.user?.role === "SUPERADMIN";
   const isMe = session?.user?.id === user.id;
@@ -66,10 +67,11 @@ export function UserRowActions({ user }: UserRowActionsProps) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await updateUser(user.id, { name, email, role });
+      const res = await updateUser(user.id, { name, email, role, password: password || undefined });
       if (res.success) {
         setIsEditOpen(false);
         setIsMenuOpen(false);
+        setPassword("");
       } else {
         alert("Update Failed: " + res.error);
       }
@@ -161,6 +163,17 @@ export function UserRowActions({ user }: UserRowActionsProps) {
                     className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-blue/50"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Reset Security Key (Optional)</label>
+                <input 
+                  type="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="LEAVE BLANK TO KEEP CURRENT"
+                  className="w-full bg-black/60 border border-white/10 px-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-blue/50"
+                />
               </div>
 
               <div className="space-y-2">

@@ -27,20 +27,20 @@ export default function LoginPage() {
 
     try {
       const result = await signIn("credentials", {
-        username,
+        username: username.toUpperCase(),
         password,
         redirect: false,
       });
 
       if (result?.error) {
         setError("Invalid Designation or Security Key.");
+        setLoading(false);
       } else {
-        router.push("/dashboard");
-        router.refresh();
+        // Use hard reload to ensure session is picked up in iframe
+        window.location.href = "/dashboard";
       }
     } catch (err) {
       setError("Link failure. Database unreachable.");
-    } finally {
       setLoading(false);
     }
   };

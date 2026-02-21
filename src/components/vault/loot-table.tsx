@@ -10,9 +10,10 @@ import {
   Loader2,
   Box
 } from "lucide-react";
-import { removeLootItems } from "@/app/actions/loot";
+import { removeLootItems, createLootRequest } from "@/app/actions/loot";
 import { cn } from "@/lib/utils";
 import { ItemDetailsModal } from "@/components/shared/item-details-modal";
+import { useSession } from "next-auth/react";
 
 interface LootTableProps {
   items: any[];
@@ -20,9 +21,40 @@ interface LootTableProps {
 }
 
 export function LootTable({ items, orgId }: LootTableProps) {
+  const { data: session }: any = useSession();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDeleting, setIsSubmitting] = useState(false);
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
+  const [requestingId, setRequestingId] = useState<string | null>(null);
+
+  const handleRequest = async (e: React.MouseEvent, item: any) => {
+    e.stopPropagation();
+    if (!session?.user) return;
+    
+    if (!confirm(`Submit request for 1x ${item.name}?`)) return;
+
+    setRequestingId(item.id);
+    try {
+      const res = await createLootRequest({
+        orgId,
+        userId: session.user.id,
+        itemId: item.id,
+        itemName: item.name,
+        category: item.category,
+        quantity: 1
+      });
+
+      if (res.success) {
+        alert("Request transmitted to Org leadership.");
+      } else {
+        alert("Request Failed: " + res.error);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRequestingId(null);
+    }
+  };
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => 
@@ -162,12 +194,22 @@ export function LootTable({ items, orgId }: LootTableProps) {
                     <p className="text-[10px] font-mono text-gray-400 uppercase truncate max-w-[120px]">{item.manufacturer || 'Unknown'}</p>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleDelete([item.id]); }}
-                      className="p-2 text-gray-700 hover:text-sc-red transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={(e) => handleRequest(e, item)}
+                        disabled={requestingId === item.id || item.quantity < 1}
+                        className="px-3 py-1 bg-sc-blue/10 hover:bg-sc-blue/20 border border-sc-blue/30 text-sc-blue text-[9px] font-bold uppercase rounded transition-all flex items-center gap-1 disabled:opacity-30"
+                      >
+                        {requestingId === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ChevronRight className="w-3 h-3" />}
+                        Request
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDelete([item.id]); }}
+                        className="p-2 text-gray-700 hover:text-sc-red transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
