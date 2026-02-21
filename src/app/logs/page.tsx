@@ -15,12 +15,12 @@ export default async function LogsPage() {
     ? await prisma.org.findUnique({ where: { id: session.user.orgId } })
     : null;
 
-  const isSuperAdmin = session.user.role === 'SUPERADMIN';
+  const isGlobalAdmin = session.user.role === 'SUPERADMIN' && !session.user.orgId;
 
-  if (!org && !isSuperAdmin) return <div className="p-10 text-sc-red font-mono sc-glass border border-sc-red/20">Org Context Not Found.</div>;
+  if (!org && !isGlobalAdmin) return <div className="p-10 text-sc-red font-mono sc-glass border border-sc-red/20">Org Context Not Found.</div>;
 
   const logs = await prisma.distributionLog.findMany({
-    where: isSuperAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' },
+    where: isGlobalAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' },
     orderBy: { timestamp: 'desc' },
     include: {
       recipient: true
@@ -36,7 +36,7 @@ export default async function LogsPage() {
             Audit Logs & History
           </h1>
           <p className="text-xs text-sc-blue/60 mt-1 font-mono tracking-widest uppercase">
-            {isSuperAdmin && !org ? "GLOBAL TRANSACTION MANIFEST" : `Transaction Manifest // ${org?.name}`}
+            {isGlobalAdmin && !org ? "GLOBAL TRANSACTION MANIFEST" : `Transaction Manifest // ${org?.name}`}
           </p>
         </div>
       </div>

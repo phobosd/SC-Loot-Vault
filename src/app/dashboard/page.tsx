@@ -4,6 +4,7 @@ import {
   TrendingUp, 
   Package, 
   Users, 
+  UserPlus,
   Zap,
   Box,
   Cpu,
@@ -28,7 +29,7 @@ export default async function Dashboard() {
     ? await prisma.org.findUnique({ where: { id: session.user.orgId } })
     : null;
 
-  const isSuperAdmin = session.user.role === 'SUPERADMIN';
+  const isGlobalAdmin = session.user.role === 'SUPERADMIN' && !session.user.orgId;
 
   // Fetch pending alliance requests for local org admin
   const allianceRequests = org ? await prisma.allianceRequest.findMany({
@@ -36,21 +37,26 @@ export default async function Dashboard() {
     include: { sender: true }
   }) : [];
 
-  // Logic for data fetching: SUPERADMIN (Global) vs ADMIN/MEMBER (Local)
+  // Fetch pending users for local org admin or global admin
+  const pendingUsers = await prisma.user.count({
+    where: isGlobalAdmin ? { status: "PENDING" } : { orgId: org?.id, status: "PENDING" }
+  });
+
+  // Logic for data fetching: Global Admin (Global) vs Org Admins/MEMBER (Local)
   const [itemCount, userCount, recentLogs, pendingRequests] = await Promise.all([
     prisma.lootItem.count({ 
-      where: isSuperAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' } 
+      where: isGlobalAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' } 
     }),
     prisma.user.count({ 
-      where: isSuperAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' } 
+      where: isGlobalAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' } 
     }),
     prisma.distributionLog.findMany({
-      where: isSuperAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' },
+      where: isGlobalAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' },
       take: 5,
       orderBy: { timestamp: 'desc' }
     }),
     prisma.lootRequest.findMany({
-      where: isSuperAdmin ? { status: "PENDING" } : { orgId: org?.id || 'UNDEFINED', status: "PENDING" },
+      where: isGlobalAdmin ? { status: "PENDING" } : { orgId: org?.id || 'UNDEFINED', status: "PENDING" },
       include: {
         user: true,
         org: true 
@@ -60,8 +66,8 @@ export default async function Dashboard() {
   ]);
 
   const stats = [
-    { name: isSuperAdmin && !org ? "Network Assets" : "Total Items", value: itemCount.toString(), icon: Package, color: "text-sc-blue", href: "/superadmin/manifest" },
-    { name: isSuperAdmin && !org ? "Global Personnel" : "Org Members", value: userCount.toString(), icon: Users, color: "text-sc-green", href: "/users" },
+    { name: isGlobalAdmin && !org ? "Network Assets" : "Total Items", value: itemCount.toString(), icon: Package, color: "text-sc-blue", href: "/superadmin/manifest" },
+    { name: isGlobalAdmin && !org ? "Global Personnel" : "Org Members", value: userCount.toString(), icon: Users, color: "text-sc-green", href: "/users" },
     { name: "Recent Draws", value: recentLogs.length.toString(), icon: Trophy, color: "text-sc-gold", href: "/logs" },
   ];
 
@@ -70,10 +76,10 @@ export default async function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white uppercase font-mono">
-            {isSuperAdmin && !org ? "Nexus Core Dashboard" : "Command Dashboard"}
+            {isGlobalAdmin && !org ? "Nexus Core Dashboard" : "Command Dashboard"}
           </h1>
           <p className="text-sm text-sc-blue/60 mt-2 font-mono tracking-wider uppercase">
-            SYSTEM STATUS: {isSuperAdmin && !org ? "MONITORING GLOBAL NETWORK" : `MONITORING VAULT // ${org?.name}`} // ACCESS: {session.user.role}
+            SYSTEM STATUS: {isGlobalAdmin && !org ? "MONITORING GLOBAL NETWORK" : `MONITORING VAULT // ${org?.name}`} // ACCESS: {session.user.role}
           </p>
         </div>
         <div className="sc-glass px-4 py-2 border-sc-blue/30 rounded flex items-center gap-3">
@@ -96,6 +102,23 @@ export default async function Dashboard() {
           </div>
           <div className="flex items-center gap-2 text-[10px] font-black text-sc-gold uppercase tracking-widest group-hover:gap-4 transition-all">
             Review Request <ArrowRight className="w-4 h-4" />
+          </div>
+        </Link>
+      )}
+
+      {pendingUsers > 0 && (
+        <Link href="/users" className="block p-4 bg-sc-blue/10 border border-sc-blue/30 rounded flex items-center justify-between hover:bg-sc-blue/20 transition-all group animate-in slide-in-from-top-4 duration-500 delay-75">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 sc-hud-corner bg-sc-blue/5 flex items-center justify-center border border-sc-blue/20">
+              <UserPlus className="w-5 h-5 text-sc-blue animate-pulse" />
+            </div>
+            <div>
+              <p className="text-[10px] font-mono text-sc-blue/60 uppercase tracking-widest">Personnel Authorization Pending</p>
+              <p className="text-sm font-bold text-white uppercase">{pendingUsers} operator designation(s) awaiting approval</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] font-black text-sc-blue uppercase tracking-widest group-hover:gap-4 transition-all">
+            Review Personnel <ArrowRight className="w-4 h-4" />
           </div>
         </Link>
       )}

@@ -99,6 +99,7 @@ model User {
   image         String?
   emailVerified DateTime?
   role          Role      @default(MEMBER)
+  status        String    @default("APPROVED") // PENDING, APPROVED, REJECTED
   orgId         String?
   org           Org?      @relation(fields: [orgId], references: [id])
   

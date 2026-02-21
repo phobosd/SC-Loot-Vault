@@ -69,6 +69,7 @@ export async function updateUser(userId: string, data: {
   password?: string;
   orgId?: string;
   username?: string;
+  status?: string;
 }) {
   try {
     const updateData: any = {
@@ -76,6 +77,10 @@ export async function updateUser(userId: string, data: {
       name: data.name,
       role: data.role,
     };
+
+    if (data.status) {
+      updateData.status = data.status;
+    }
 
     if (data.username) {
       updateData.username = data.username.toUpperCase();

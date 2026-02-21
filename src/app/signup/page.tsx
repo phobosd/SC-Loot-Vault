@@ -44,7 +44,7 @@ export default function UnifiedSignupPage() {
   useEffect(() => {
     const fetchOrgs = async () => {
       try {
-        const res = await axios.get("/api/orgs");
+        const res = await axios.get("/api/orgs?signup=true");
         setOrgs(res.data);
         if (res.data.length > 0) setSelectedOrgId(res.data[0].id);
       } catch (err) {}
@@ -205,12 +205,14 @@ export default function UnifiedSignupPage() {
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <select 
                     value={selectedOrgId} onChange={(e) => setSelectedOrgId(e.target.value)}
-                    className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-sc-blue/50 appearance-none uppercase"
+                    className="w-full bg-[#0A0A12] border border-white/10 pl-10 pr-10 py-3 text-sm font-mono text-white focus:outline-none focus:border-sc-blue/50 appearance-none uppercase cursor-pointer"
                   >
+                    <option value="" className="bg-[#0A0A12] text-gray-500">-- SELECT NODE --</option>
                     {orgs.map(org => (
-                      <option key={org.id} value={org.id}>{org.name}</option>
+                      <option key={org.id} value={org.id} className="bg-[#0A0A12] text-white">{org.name}</option>
                     ))}
                   </select>
+                  <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 rotate-90 pointer-events-none" />
                 </div>
               </div>
 

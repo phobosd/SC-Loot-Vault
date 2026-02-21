@@ -9,6 +9,7 @@ import {
   User as UserIcon
 } from "lucide-react";
 import { UserRowActions } from "./user-row-actions";
+import { cn } from "@/lib/utils";
 
 interface UserTableProps {
   initialUsers: any[];
@@ -62,15 +63,14 @@ export function UserTable({ initialUsers, currentUserRole }: UserTableProps) {
               <th className="px-6 py-4 text-[10px] font-bold text-sc-gold uppercase tracking-widest">Operator</th>
               <th className="px-6 py-4 text-[10px] font-bold text-sc-gold uppercase tracking-widest text-center">Organization</th>
               <th className="px-6 py-4 text-[10px] font-bold text-sc-gold uppercase tracking-widest text-center">Security Role</th>
-              <th className="px-6 py-4 text-[10px] font-bold text-sc-gold uppercase tracking-widest">Comm-Link Status</th>
-              <th className="px-6 py-4 text-[10px] font-bold text-sc-gold uppercase tracking-widest">Enlistment Date</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-sc-gold uppercase tracking-widest text-center">Enrollment</th>
               <th className="px-6 py-4 text-[10px] font-bold text-sc-gold uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-20 text-center">
+                <td colSpan={5} className="px-6 py-20 text-center">
                   <p className="text-gray-600 font-mono uppercase text-xs">No operators matching search criteria detected.</p>
                 </td>
               </tr>
@@ -86,14 +86,15 @@ export function UserTable({ initialUsers, currentUserRole }: UserTableProps) {
                           user.name?.substring(0, 2).toUpperCase() || user.username?.substring(0, 2).toUpperCase() || "UN"
                         )}
                       </div>
-                                          <div>
-                                            <p className="text-sm font-semibold text-white tracking-wide uppercase">{user.name || user.username || "Unknown"}</p>
-                                            <p className="text-[10px] text-gray-500 font-mono flex items-center gap-2">
-                                              <span className="text-sc-blue/60">{user.username}</span>
-                                              <span className="opacity-30">|</span>
-                                              {user.email || "NO_COMM_LINK"}
-                                            </p>
-                                          </div>                    </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white tracking-wide uppercase">{user.name || user.username || "Unknown"}</p>
+                        <p className="text-[10px] text-gray-500 font-mono flex items-center gap-2">
+                          <span className="text-sc-blue/60">{user.username}</span>
+                          <span className="opacity-30">|</span>
+                          {user.email || "NO_COMM_LINK"}
+                        </p>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span className="text-[10px] text-sc-blue font-mono uppercase tracking-widest border border-sc-blue/20 px-2 py-1 bg-sc-blue/5 rounded">
@@ -110,13 +111,23 @@ export function UserTable({ initialUsers, currentUserRole }: UserTableProps) {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-[10px] text-sc-green font-mono uppercase tracking-tighter">Handshake Active</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-[10px] text-gray-500 font-mono">
-                      {new Date(user.createdAt).toISOString().split('T')[0]}
-                    </p>
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className={cn(
+                        "w-1.5 h-1.5 rounded-full animate-pulse",
+                        user.status === "APPROVED" ? "bg-sc-green shadow-[0_0_8px_rgba(0,255,194,0.5)]" :
+                        user.status === "PENDING" ? "bg-sc-gold shadow-[0_0_8px_rgba(224,177,48,0.5)]" :
+                        "bg-sc-red shadow-[0_0_8px_rgba(255,0,0,0.5)]"
+                      )} />
+                      <span className={cn(
+                        "text-[9px] font-bold uppercase",
+                        user.status === "APPROVED" ? "text-sc-green" :
+                        user.status === "PENDING" ? "text-sc-gold" :
+                        "text-sc-red"
+                      )}>
+                        {user.status || "APPROVED"}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <UserRowActions user={user} />

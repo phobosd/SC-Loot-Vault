@@ -3,11 +3,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session: any = await getServerSession(authOptions);
-  
-  if (!session?.user || session.user.role !== 'SUPERADMIN') {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { searchParams } = new URL(request.url);
+  const isSignup = searchParams.get("signup") === "true";
+
+  // Allow public access ONLY for the signup enrollment dropdown
+  if (!isSignup) {
+    if (!session?.user || session.user.role !== 'SUPERADMIN' || session.user.orgId) {
+      return NextResponse.json({ error: "Unauthorized: Global Root Access Required" }, { status: 401 });
+    }
   }
 
   const orgs = await prisma.org.findMany({

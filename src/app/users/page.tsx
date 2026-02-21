@@ -26,9 +26,9 @@ export default async function UsersPage() {
   if (!currentUser) redirect("/login");
 
   const org = currentUser.org;
-  const isSuperAdmin = currentUser.role === 'SUPERADMIN';
+  const isGlobalAdmin = currentUser.role === 'SUPERADMIN' && !org;
 
-  if (!org && !isSuperAdmin) return <div className="p-10 text-sc-red font-mono sc-glass border border-sc-red/20">Org Context Not Found.</div>;
+  if (!org && !isGlobalAdmin) return <div className="p-10 text-sc-red font-mono sc-glass border border-sc-red/20">Org Context Not Found.</div>;
 
   // If user is a MEMBER, show their profile instead of the user list
   if (currentUser.role === 'MEMBER') {
@@ -36,9 +36,9 @@ export default async function UsersPage() {
     return <ProfileForm user={currentUser} org={org} />;
   }
 
-  // Logic for users visibility: SUPERADMIN sees all, ADMIN sees only their org
+  // Logic for users visibility: Global Admin sees all, Org Admins see only their org
   const userWhere: any = {};
-  if (!isSuperAdmin) {
+  if (!isGlobalAdmin) {
     userWhere.orgId = org?.id;
   }
 
@@ -62,7 +62,7 @@ export default async function UsersPage() {
             User Management
           </h1>
           <p className="text-xs text-sc-gold/60 mt-1 font-mono tracking-widest uppercase">
-            {isSuperAdmin ? "Global Personnel Database" : `Org Personnel Database // ${org?.name}`}
+            {isGlobalAdmin ? "Global Personnel Database" : `Org Personnel Database // ${org?.name}`}
           </p>
         </div>
         <AddUserDialog orgId={org?.id || ""} currentUserRole={currentUser.role} />

@@ -23,6 +23,13 @@ const providers: any[] = [
 
           if (!user || !user.password) return null;
 
+          if (user.status === "PENDING") {
+            throw new Error("Enrollment Pending: Your designation is awaiting administrative authorization.");
+          }
+          if (user.status === "REJECTED") {
+            throw new Error("Access Denied: Your enrollment request has been decommissioned.");
+          }
+
           const isValid = await bcrypt.compare(credentials.password, user.password);
           if (!isValid) return null;
 

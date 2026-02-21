@@ -31,6 +31,7 @@ interface UserRowActionsProps {
     email: string | null;
     role: Role;
     orgId: string;
+    status: string;
   };
 }
 
@@ -45,6 +46,7 @@ export function UserRowActions({ user }: UserRowActionsProps) {
   const [username, setUsername] = useState(user.username || "");
   const [email, setEmail] = useState(user.email || "");
   const [role, setRole] = useState<Role>(user.role);
+  const [status, setStatus] = useState(user.status || "APPROVED");
   const [password, setPassword] = useState("");
   const [selectedOrgId, setSelectedOrgId] = useState(user.orgId);
   const [orgs, setOrgs] = useState<any[]>([]);
@@ -71,6 +73,23 @@ export function UserRowActions({ user }: UserRowActionsProps) {
     window.location.href = "/dashboard";
   };
 
+  const handleApprove = async () => {
+    setLoading(true);
+    try {
+      const res = await updateUser(user.id, { 
+        name: user.name || "", 
+        role: user.role, 
+        status: "APPROVED" 
+      });
+      if (!res.success) alert(res.error);
+      setIsMenuOpen(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirm(`Are you sure you want to decommission Operator ${user.name || user.email}? This action is irreversible.`)) return;
     setLoading(true);
@@ -92,6 +111,7 @@ export function UserRowActions({ user }: UserRowActionsProps) {
         username,
         email, 
         role, 
+        status,
         password: password || undefined,
         orgId: isSuperAdmin ? selectedOrgId : undefined
       });
@@ -123,6 +143,14 @@ export function UserRowActions({ user }: UserRowActionsProps) {
           <div className="fixed inset-0 z-[100]" onClick={() => setIsMenuOpen(false)} />
           <div className="absolute right-0 mt-2 w-48 sc-glass border border-sc-gold/50 rounded shadow-[0_0_30px_rgba(0,0,0,0.9)] z-[110] overflow-hidden animate-in fade-in zoom-in-95 duration-200 bg-[#0A0A12]">
             <div className="p-1">
+              {user.status === "PENDING" && (
+                <button 
+                  onClick={handleApprove}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-sc-green hover:bg-sc-green/10 transition-colors rounded mb-1 border-b border-white/5"
+                >
+                  <ShieldCheck className="w-3 h-3" /> Approve Enrollment
+                </button>
+              )}
               {isSuperAdmin && !isMe && (
                 <button 
                   onClick={handleImpersonate}
@@ -165,7 +193,7 @@ export function UserRowActions({ user }: UserRowActionsProps) {
               </button>
             </div>
 
-            <form onSubmit={handleUpdate} className="p-6 space-y-5">
+            <form onSubmit={handleUpdate} className="p-6 space-y-5 max-h-[70vh] overflow-y-auto custom-scrollbar">
               {isSuperAdmin && (
                 <div className="space-y-2">
                   <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest flex items-center gap-2">
@@ -185,6 +213,29 @@ export function UserRowActions({ user }: UserRowActionsProps) {
                   </div>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Enrollment Status</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["PENDING", "APPROVED", "REJECTED"].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setStatus(s)}
+                      className={cn(
+                        "py-2 text-[9px] font-bold uppercase border transition-all",
+                        status === s 
+                          ? s === "APPROVED" ? "bg-sc-green/20 border-sc-green text-sc-green shadow-[0_0_10px_rgba(0,255,194,0.2)]" :
+                            s === "PENDING" ? "bg-sc-gold/20 border-sc-gold text-sc-gold shadow-[0_0_10px_rgba(224,177,48,0.2)]" :
+                            "bg-sc-red/20 border-sc-red text-sc-red shadow-[0_0_10px_rgba(255,77,77,0.2)]"
+                          : "bg-black/40 border-white/5 text-gray-500 hover:text-white"
+                      )}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div className="space-y-2">
                 <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Operator Name (Display)</label>

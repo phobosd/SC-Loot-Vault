@@ -113,6 +113,7 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {/* Discord OAuth hidden for now
           <div className="relative flex items-center py-2">
             <div className="flex-grow border-t border-white/5"></div>
             <span className="flex-shrink mx-4 text-[8px] font-mono text-gray-600 uppercase tracking-widest">OR EXTERNAL LINK</span>
@@ -129,6 +130,7 @@ export default function LoginPage() {
             </div>
             <ChevronRight className="w-4 h-4 text-white/30 group-hover:text-white transition-colors" />
           </button>
+          */}
         </div>
 
         <div className="text-center space-y-4">

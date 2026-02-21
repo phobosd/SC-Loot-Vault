@@ -15,17 +15,23 @@ export async function GET(request: Request) {
   const role = searchParams.get("role");
   const includeAllies = searchParams.get("includeAllies") === "true";
 
-  // Security: Only SUPERADMIN can filter by arbitrary orgId
-  const targetOrgId = (session.user.role === 'SUPERADMIN' && orgId) ? orgId : session.user.orgId;
+  const isGlobalAdmin = session.user.role === 'SUPERADMIN' && !session.user.orgId;
 
-  if (!targetOrgId) {
-    // If Global Admin with no org, just return all users (capped)
+  // Security: Only GLOBAL Root Admin can filter by arbitrary orgId
+  const targetOrgId = (isGlobalAdmin && orgId) ? orgId : session.user.orgId;
+
+  if (!targetOrgId && isGlobalAdmin) {
+    // If Global Admin with no org and no specific orgId requested, return all users (capped)
     const users = await prisma.user.findMany({
-      select: { id: true, name: true, email: true, role: true, username: true, org: { select: { name: true } } },
+      select: { id: true, name: true, email: true, role: true, username: true, org: { select: { name: true } }, status: true },
       orderBy: { name: 'asc' },
       take: 100
     });
     return NextResponse.json(users);
+  }
+
+  if (!targetOrgId) {
+    return NextResponse.json({ error: "Missing organization context." }, { status: 400 });
   }
 
   const where: any = { 

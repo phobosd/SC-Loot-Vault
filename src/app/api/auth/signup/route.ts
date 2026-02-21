@@ -26,7 +26,8 @@ export async function POST(req: Request) {
         password: hashedPassword,
         name,
         orgId,
-        role: "MEMBER" // Default role for new signups
+        role: "MEMBER", // Default role for new signups
+        status: "PENDING" // Requires admin approval
       }
     });
 

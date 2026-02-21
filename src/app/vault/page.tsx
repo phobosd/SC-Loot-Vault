@@ -23,15 +23,15 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
     redirect("/login");
   }
 
-  const isSuperAdmin = session.user.role === 'SUPERADMIN';
+  const isGlobalAdmin = session.user.role === 'SUPERADMIN' && !session.user.orgId;
   let org = null;
   let isAlliedView = false;
 
   if (allyId) {
     isAlliedView = allyId !== session.user.orgId;
     
-    // If browsing an ally, verify alliance exists or user is SuperAdmin
-    if (isSuperAdmin) {
+    // If browsing an ally, verify alliance exists or user is Global Admin
+    if (isGlobalAdmin) {
       org = await prisma.org.findUnique({ where: { id: allyId } });
     } else {
       const alliance = await prisma.alliance.findFirst({
@@ -52,7 +52,7 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
   }
 
   // If Global Admin (no org and not browsing an ally), show empty state per user preference
-  if (isSuperAdmin && !org && !allyId) {
+  if (isGlobalAdmin && !org && !allyId) {
     return (
       <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
         <div>
@@ -94,7 +94,7 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
               "w-2 h-8 block",
               isAlliedView ? "bg-sc-gold shadow-[0_0_10px_rgba(224,177,48,0.5)]" : "bg-sc-blue shadow-[0_0_10px_rgba(0,209,255,0.5)]"
             )} />
-            {isAlliedView ? `Allied Vault: ${org.name}` : (isSuperAdmin && !session.user.orgId ? `Nexus Vault: ${org.name}` : "Org Loot Vault")}
+            {isAlliedView ? `Allied Vault: ${org.name}` : (isGlobalAdmin ? `Nexus Vault: ${org.name}` : "Org Loot Vault")}
           </h1>
           <p className="text-xs text-sc-blue/60 mt-1 font-mono tracking-widest uppercase flex items-center gap-2">
             {isAlliedView && <Handshake className="w-3 h-3 text-sc-gold" />}

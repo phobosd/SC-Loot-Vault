@@ -24,23 +24,23 @@ export default async function DistributionsPage() {
     ? await prisma.org.findUnique({ where: { id: session.user.orgId } })
     : null;
 
-  const isSuperAdmin = session.user.role === 'SUPERADMIN';
+  const isGlobalAdmin = session.user.role === 'SUPERADMIN' && !session.user.orgId;
 
-  // If not superadmin and no org, then it's an error
-  if (!org && !isSuperAdmin) return <div>No Org context.</div>;
+  // If not global admin and no org, then it's an error
+  if (!org && !isGlobalAdmin) return <div>No Org context.</div>;
 
   const [inventory, recentLogs, localUsers, alliances] = await Promise.all([
     prisma.lootItem.findMany({
-      where: isSuperAdmin && !org ? { quantity: { gt: 0 } } : { orgId: org?.id || 'UNDEFINED', quantity: { gt: 0 } },
+      where: isGlobalAdmin && !org ? { quantity: { gt: 0 } } : { orgId: org?.id || 'UNDEFINED', quantity: { gt: 0 } },
       orderBy: { name: 'asc' }
     }),
     prisma.distributionLog.findMany({
-      where: isSuperAdmin && !org ? { type: "ASSIGNED" } : { orgId: org?.id || 'UNDEFINED', type: "ASSIGNED" },
+      where: isGlobalAdmin && !org ? { type: "ASSIGNED" } : { orgId: org?.id || 'UNDEFINED', type: "ASSIGNED" },
       include: { recipient: true },
       orderBy: { timestamp: 'desc' }
     }),
     prisma.user.findMany({
-      where: isSuperAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' },
+      where: isGlobalAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' },
       select: {
         id: true,
         name: true,
