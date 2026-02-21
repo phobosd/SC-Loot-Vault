@@ -15,7 +15,9 @@ import {
   LogOut,
   ShieldCheck,
   UserCheck,
-  Building2
+  Building2,
+  Ghost,
+  ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,9 +36,14 @@ const menuItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { data: session }: any = useSession();
+  const { data: session, update }: any = useSession();
 
   const user = session?.user;
+
+  const handleStopImpersonating = async () => {
+    await update({ stopImpersonating: true });
+    window.location.href = "/superadmin";
+  };
 
   return (
     <div className="w-64 flex-shrink-0 flex flex-col h-full sc-glass border-r border-sc-border z-10">
@@ -52,7 +59,23 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 mt-6 px-4 space-y-1 overflow-y-auto">
+      {/* Impersonation Banner */}
+      {user?.isImpersonating && (
+        <div className="mx-4 mb-4 p-3 bg-sc-red/10 border border-sc-red/30 rounded animate-in fade-in slide-in-from-top-2 duration-500">
+          <div className="flex items-center gap-2 mb-2">
+            <Ghost className="w-3 h-3 text-sc-red animate-pulse" />
+            <p className="text-[9px] font-bold text-sc-red uppercase tracking-widest">Impersonation Active</p>
+          </div>
+          <button 
+            onClick={handleStopImpersonating}
+            className="w-full py-1.5 bg-sc-red/20 hover:bg-sc-red/30 border border-sc-red/50 text-sc-red text-[8px] font-black uppercase tracking-widest transition-all rounded shadow-[0_0_10px_rgba(255,0,0,0.1)]"
+          >
+            End Protocol
+          </button>
+        </div>
+      )}
+
+      <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
           // Check role access
           if (item.role && !item.role.includes(user?.role)) return null;

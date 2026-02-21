@@ -42,3 +42,10 @@ next-env.d.ts
 
 /src/generated/prisma
 \n# local database\n*.db\n*.db-journal\n*.db-shm\n*.db-wal
+prisma/dev.db*
+tunnel-config.yml
+tunnel.pid
+tunnel.log
+.env
+landing-page/.firebase/
+landing-page/firebase.json

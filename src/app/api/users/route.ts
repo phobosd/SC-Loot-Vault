@@ -1,13 +1,28 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const orgId = searchParams.get("orgId");
+  const role = searchParams.get("role");
+
   try {
-    const org = await prisma.org.findFirst();
-    if (!org) return NextResponse.json([]);
+    let whereClause: any = {};
+    
+    if (orgId) {
+      whereClause.orgId = orgId;
+    } else {
+      const org = await prisma.org.findFirst();
+      if (!org) return NextResponse.json([]);
+      whereClause.orgId = org.id;
+    }
+
+    if (role) {
+      whereClause.role = role;
+    }
 
     const users = await prisma.user.findMany({
-      where: { orgId: org.id },
+      where: whereClause,
       orderBy: { name: 'asc' }
     });
 

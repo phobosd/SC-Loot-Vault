@@ -47,7 +47,8 @@ async function seed() {
         },
         headers: {
           'accept': 'application/json'
-        }
+        },
+        timeout: 30000 // 30 second timeout
       });
 
       const { data, meta } = response.data;
@@ -58,51 +59,41 @@ async function seed() {
       const filteredItems = data.filter((item: any) => {
         const cls = item.classification || "";
         const name = item.name || "";
-        const isPlaceholder = name.includes('PLACEHOLDER') || name.includes('TBD') || name === "";
+        const isPlaceholder = name.includes('PLACEHOLDER') || name.includes('TBD') || name === "" || name.includes('DO NOT USE');
         return !isPlaceholder && TARGET_CLASSIFICATIONS.some(target => cls.startsWith(target));
       });
 
       if (filteredItems.length > 0) {
-        console.log(`Page ${page}: Found ${filteredItems.length} matching items.`);
-        for (const item of filteredItems) {
-          // Check if we've already cached an item with this name to prevent duplicates
-          const existing = await prisma.sCItemCache.findFirst({
-            where: { name: item.name }
+        console.log(`Page ${page}: Processing ${filteredItems.length} items...`);
+        // Use a transaction or batch to speed things up
+        await Promise.all(filteredItems.map(async (item: any) => {
+          await prisma.sCItemCache.upsert({
+            where: { wikiId: item.uuid },
+            update: {
+              name: item.name,
+              type: item.type || item.classification || 'Unknown',
+              subType: item.sub_type || null,
+              manufacturer: item.manufacturer?.name || null,
+              size: item.size !== null && item.size !== undefined ? String(item.size) : null,
+              grade: item.grade !== null && item.grade !== undefined ? String(item.grade) : null,
+              class: item.class !== null && item.class !== undefined ? String(item.class) : null,
+              description: item.description?.en_EN || null,
+              imageUrl: item.web_url ? `${item.web_url}/image` : null,
+            },
+            create: {
+              wikiId: item.uuid,
+              name: item.name,
+              type: item.type || item.classification || 'Unknown',
+              subType: item.sub_type || null,
+              manufacturer: item.manufacturer?.name || null,
+              size: item.size !== null && item.size !== undefined ? String(item.size) : null,
+              grade: item.grade !== null && item.grade !== undefined ? String(item.grade) : null,
+              class: item.class !== null && item.class !== undefined ? String(item.class) : null,
+              description: item.description?.en_EN || null,
+              imageUrl: item.web_url ? `${item.web_url}/image` : null,
+            }
           });
-
-          if (existing) {
-            // Update existing record if found, but keep the name as the primary identity
-            await prisma.sCItemCache.update({
-              where: { id: existing.id },
-              data: {
-                wikiId: item.uuid, // Keep latest UUID
-                type: item.type || item.classification || 'Unknown',
-                subType: item.sub_type || null,
-                manufacturer: item.manufacturer?.name || null,
-                size: item.size !== null && item.size !== undefined ? String(item.size) : null,
-                grade: item.grade !== null && item.grade !== undefined ? String(item.grade) : null,
-                class: item.class !== null && item.class !== undefined ? String(item.class) : null,
-                description: item.description?.en_EN || null,
-                imageUrl: item.web_url ? `${item.web_url}/image` : null,
-              }
-            });
-          } else {
-            await prisma.sCItemCache.create({
-              data: {
-                wikiId: item.uuid,
-                name: item.name,
-                type: item.type || item.classification || 'Unknown',
-                subType: item.sub_type || null,
-                manufacturer: item.manufacturer?.name || null,
-                size: item.size !== null && item.size !== undefined ? String(item.size) : null,
-                grade: item.grade !== null && item.grade !== undefined ? String(item.grade) : null,
-                class: item.class !== null && item.class !== undefined ? String(item.class) : null,
-                description: item.description?.en_EN || null,
-                imageUrl: item.web_url ? `${item.web_url}/image` : null,
-              },
-            });
-          }
-        }
+        }));
       }
 
       page++;

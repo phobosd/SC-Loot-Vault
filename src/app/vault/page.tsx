@@ -6,6 +6,7 @@ import {
   Database
 } from "lucide-react";
 import { ImportButton } from "@/components/vault/import-button";
+import { BulkAddLootDialog } from "@/components/vault/bulk-add-loot-dialog";
 import { AddItemDialog } from "@/components/vault/add-item-dialog";
 import { LootTable } from "@/components/vault/loot-table";
 
@@ -39,6 +40,7 @@ export default async function VaultPage() {
           </a>
           <ImportButton orgId={org.id} />
           <AddItemDialog orgId={org.id} />
+          <BulkAddLootDialog orgId={org.id} />
         </div>
       </div>
 

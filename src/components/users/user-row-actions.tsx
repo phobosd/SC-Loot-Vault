@@ -12,11 +12,13 @@ import {
   Edit,
   X,
   Mail,
-  User as UserIcon
+  User as UserIcon,
+  Ghost
 } from "lucide-react";
 import { Role } from "@prisma/client";
 import { updateUser, deleteUser } from "@/app/actions/user";
 import { cn } from "@/lib/utils";
+import { useSession } from "next-auth/react";
 
 interface UserRowActionsProps {
   user: {
@@ -28,6 +30,7 @@ interface UserRowActionsProps {
 }
 
 export function UserRowActions({ user }: UserRowActionsProps) {
+  const { data: session, update }: any = useSession();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,6 +39,16 @@ export function UserRowActions({ user }: UserRowActionsProps) {
   const [name, setName] = useState(user.name || "");
   const [email, setEmail] = useState(user.email || "");
   const [role, setRole] = useState<Role>(user.role);
+
+  const isSuperAdmin = session?.user?.role === "SUPERADMIN";
+  const isMe = session?.user?.id === user.id;
+
+  const handleImpersonate = async () => {
+    setLoading(true);
+    await update({ impersonateId: user.id });
+    setIsMenuOpen(false);
+    window.location.href = "/dashboard";
+  };
 
   const handleDelete = async () => {
     if (!confirm(`Are you sure you want to decommission Operator ${user.name || user.email}? This action is irreversible.`)) return;
@@ -81,6 +94,14 @@ export function UserRowActions({ user }: UserRowActionsProps) {
           <div className="fixed inset-0 z-[100]" onClick={() => setIsMenuOpen(false)} />
           <div className="absolute right-0 mt-2 w-48 sc-glass border border-sc-gold/50 rounded shadow-[0_0_30px_rgba(0,0,0,0.9)] z-[110] overflow-hidden animate-in fade-in zoom-in-95 duration-200 bg-[#0A0A12]">
             <div className="p-1">
+              {isSuperAdmin && !isMe && (
+                <button 
+                  onClick={handleImpersonate}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-sc-blue hover:bg-sc-blue/10 transition-colors rounded mb-1"
+                >
+                  <Ghost className="w-3 h-3" /> Impersonate Operator
+                </button>
+              )}
               <button 
                 onClick={() => { setIsEditOpen(true); setIsMenuOpen(false); }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-gray-400 hover:bg-sc-blue/10 hover:text-sc-blue transition-colors rounded"
@@ -100,8 +121,8 @@ export function UserRowActions({ user }: UserRowActionsProps) {
 
       {/* Edit Modal */}
       {isEditOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="sc-glass w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-sc-blue/30">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="sc-glass w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-sc-blue/30 shadow-2xl">
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-sc-blue/5">
               <div>
                 <h2 className="text-lg font-bold text-sc-blue tracking-widest uppercase flex items-center gap-2">
@@ -153,7 +174,7 @@ export function UserRowActions({ user }: UserRowActionsProps) {
                       className={cn(
                         "py-2 text-[9px] font-bold uppercase border transition-all",
                         role === r 
-                          ? "bg-sc-blue/20 border-sc-blue text-sc-blue shadow-[0_0_10px_rgba(0,209,255,0.2)]" 
+                          ? "bg-sc-blue/20 border-sc-blue text-sc-blue shadow-[0_0_10px_rgba(209,255,0,0.2)]" 
                           : "bg-black/40 border-white/5 text-gray-500 hover:text-white"
                       )}
                     >

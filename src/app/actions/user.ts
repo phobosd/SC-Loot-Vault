@@ -29,15 +29,23 @@ export async function deleteUser(userId: string) {
   }
 }
 
+import bcrypt from "bcryptjs";
+
 export async function createUser(data: {
+  username?: string;
+  password?: string;
   email?: string;
   name?: string;
   role: Role;
   orgId: string;
 }) {
   try {
+    const hashedPassword = data.password ? await bcrypt.hash(data.password, 10) : null;
+
     const user = await prisma.user.create({
       data: {
+        username: data.username || null,
+        password: hashedPassword,
         email: data.email || null,
         name: data.name,
         role: data.role,
@@ -48,7 +56,7 @@ export async function createUser(data: {
     return { success: true, user };
   } catch (error: any) {
     if (error.code === 'P2002') {
-      return { success: false, error: "Operator already registered in system." };
+      return { success: false, error: "Designation (Username) or Email already registered." };
     }
     return { success: false, error: error.message };
   }

@@ -8,7 +8,8 @@ import {
   Check, 
   Shield,
   Mail,
-  User as UserIcon
+  User as UserIcon,
+  Key
 } from "lucide-react";
 import { Role } from "@prisma/client";
 import { createUser } from "@/app/actions/user";
@@ -20,6 +21,8 @@ interface AddUserDialogProps {
 
 export function AddUserDialog({ orgId }: AddUserDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<Role>(Role.MEMBER);
@@ -27,6 +30,8 @@ export function AddUserDialog({ orgId }: AddUserDialogProps) {
   const [error, setError] = useState("");
 
   const handleReset = () => {
+    setUsername("");
+    setPassword("");
     setEmail("");
     setName("");
     setRole(Role.MEMBER);
@@ -40,6 +45,8 @@ export function AddUserDialog({ orgId }: AddUserDialogProps) {
     
     try {
       const result = await createUser({
+        username,
+        password,
         email,
         name,
         role,
@@ -83,36 +90,63 @@ export function AddUserDialog({ orgId }: AddUserDialogProps) {
             </h2>
             <p className="text-[10px] text-sc-gold/60 font-mono tracking-widest uppercase">Admin Authorization Required // SEC-LVL-ADMIN</p>
           </div>
-          <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-white transition-colors">
+          <button onClick={() => { setIsOpen(false); handleReset(); }} className="text-gray-500 hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
           {error && (
             <div className="p-3 bg-sc-red/10 border border-sc-red/30 text-sc-red text-[10px] font-mono uppercase tracking-tighter">
               Error: {error}
             </div>
           )}
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Operator Designation (Name)</label>
-            <div className="relative">
-              <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input 
-                type="text" 
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="E.G. CHRIS ROBERTS" 
-                className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-gold/50"
-              />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Designation (Username)</label>
+              <div className="relative">
+                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input 
+                  type="text" 
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toUpperCase())}
+                  placeholder="C.ROBERTS" 
+                  className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-gold/50 transition-all"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Security Key</label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input 
+                  type="password" 
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" 
+                  className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-gold/50 transition-all"
+                />
+              </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Comm-Link Address (Email - Optional)</label>
+            <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Operator Name (Display)</label>
+            <input 
+              type="text" 
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="E.G. CHRIS ROBERTS" 
+              className="w-full bg-black/60 border border-white/10 px-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-gold/50 transition-all"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Comm-Link Address (Optional Email)</label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input 
@@ -120,13 +154,13 @@ export function AddUserDialog({ orgId }: AddUserDialogProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="OPERATOR@DIXNCOX.ORG" 
-                className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-gold/50"
+                className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-gold/50 transition-all"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Security Clearance (Role)</label>
+            <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Security Clearance</label>
             <div className="grid grid-cols-3 gap-2">
               {[Role.MEMBER, Role.ADMIN, Role.SUPERADMIN].map((r) => (
                 <button
@@ -149,7 +183,7 @@ export function AddUserDialog({ orgId }: AddUserDialogProps) {
           <div className="pt-4 flex gap-3">
             <button 
               type="button"
-              onClick={() => setIsOpen(false)}
+              onClick={() => { setIsOpen(false); handleReset(); }}
               className="flex-1 py-3 text-xs font-bold text-white uppercase tracking-widest hover:bg-white/5 transition-colors rounded border border-white/10"
             >
               Cancel

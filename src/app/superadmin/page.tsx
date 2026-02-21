@@ -5,25 +5,43 @@ import {
   ExternalLink,
   Users,
   Package,
-  LayoutGrid
+  LayoutGrid,
+  History
 } from "lucide-react";
 import { ProvisionOrgDialog } from "@/components/superadmin/provision-org-dialog";
 import { OrgRowActions } from "@/components/superadmin/org-row-actions";
+import { OrgRequestManager } from "@/components/superadmin/org-request-manager";
 
 export default async function SuperAdminPage() {
-  const orgs = await prisma.org.findMany({
-    include: {
-      _count: {
-        select: {
-          users: true,
-          lootItems: true
+  let orgs: any[] = [];
+  let requests: any[] = [];
+
+  try {
+    const [fetchedOrgs, fetchedRequests] = await Promise.all([
+      prisma.org.findMany({
+        include: {
+          _count: {
+            select: {
+              users: true,
+              lootItems: true
+            }
+          }
         }
-      }
-    }
-  });
+      }),
+      prisma.orgRequest.findMany({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
+    orgs = fetchedOrgs;
+    requests = fetchedRequests;
+  } catch (error: any) {
+    console.error("[NEXUS ERROR] Failed to fetch data:", error.message);
+    // Fallback to empty arrays if DB is unavailable
+  }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-10 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white uppercase flex items-center gap-3">
@@ -34,8 +52,16 @@ export default async function SuperAdminPage() {
             Multi-Tenant Org Management // GLOBAL ROOT ACCESS
           </p>
         </div>
-        <ProvisionOrgDialog />
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 text-xs font-bold uppercase transition-all rounded">
+            <History className="w-4 h-4" /> Nexus Audit
+          </button>
+          <ProvisionOrgDialog />
+        </div>
       </div>
+
+      {/* Incoming Requests Section */}
+      <OrgRequestManager requests={requests} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="sc-glass p-6 rounded-lg border-sc-blue/30">

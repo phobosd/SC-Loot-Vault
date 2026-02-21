@@ -9,10 +9,14 @@ import {
   Edit,
   X,
   Palette,
-  Globe
+  Globe,
+  Ghost,
+  ShieldCheck
 } from "lucide-react";
 import { updateOrg, deleteOrg } from "@/app/actions/org";
 import { cn } from "@/lib/utils";
+import { useSession } from "next-auth/react";
+import axios from "axios";
 
 interface OrgRowActionsProps {
   org: {
@@ -25,9 +29,32 @@ interface OrgRowActionsProps {
 }
 
 export function OrgRowActions({ org }: OrgRowActionsProps) {
+  const { update }: any = useSession();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // ... (existing state)
+
+  const handleImpersonateAdmin = async () => {
+    setLoading(true);
+    try {
+      // Fetch the first admin/superadmin for this org to impersonate
+      const res = await axios.get(`/api/users?orgId=${org.id}&role=ADMIN`);
+      const admin = res.data[0];
+      
+      if (admin) {
+        await update({ impersonateId: admin.id });
+        window.location.href = "/dashboard";
+      } else {
+        alert("No administrative nodes found for this organization. Provision an admin first.");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const [name, setName] = useState(org.name);
   const [slug, setSlug] = useState(org.slug);
@@ -73,8 +100,14 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
       {isMenuOpen && (
         <>
           <div className="fixed inset-0 z-[100]" onClick={() => setIsMenuOpen(false)} />
-          <div className="absolute right-0 mt-2 w-48 sc-glass border border-sc-blue/50 rounded shadow-2xl z-[110] bg-[#0A0A12] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="absolute right-0 mt-2 w-56 sc-glass border border-sc-blue/50 rounded shadow-2xl z-[110] bg-[#0A0A12] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-1">
+              <button 
+                onClick={handleImpersonateAdmin}
+                className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-sc-blue hover:bg-sc-blue/10 transition-colors rounded mb-1"
+              >
+                <Ghost className="w-3 h-3" /> Impersonate Lead Admin
+              </button>
               <button onClick={() => { setIsEditOpen(true); setIsMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-gray-400 hover:bg-sc-blue/10 hover:text-sc-blue transition-colors rounded">
                 <Edit className="w-3 h-3" /> Edit Org Node
               </button>

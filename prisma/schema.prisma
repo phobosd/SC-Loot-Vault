@@ -38,9 +38,21 @@ model WhitelabelConfig {
   headerText  String?
 }
 
+model OrgRequest {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  requesterName String
+  contactInfo   String
+  status        String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt     DateTime @default(now())
+}
+
 // User & RBAC
 model User {
   id            String    @id @default(cuid())
+  username      String?   @unique
+  password      String?   // Hashed
   email         String?   @unique
   name          String?
   image         String?

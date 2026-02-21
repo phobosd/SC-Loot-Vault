@@ -85,3 +85,63 @@ export async function updateOrgDiscord(orgId: string, data: {
     return { success: false, error: error.message };
   }
 }
+
+export async function submitOrgRequest(data: {
+  name: string;
+  slug: string;
+  requesterName: string;
+  contactInfo: string;
+}) {
+  try {
+    const request = await prisma.orgRequest.create({
+      data: {
+        ...data,
+        status: "PENDING"
+      }
+    });
+    return { success: true, request };
+  } catch (error: any) {
+    if (error.code === 'P2002') return { success: false, error: "Slug or Name already in use." };
+    return { success: false, error: error.message };
+  }
+}
+
+export async function approveOrgRequest(requestId: string) {
+  try {
+    const request = await prisma.orgRequest.findUnique({
+      where: { id: requestId }
+    });
+
+    if (!request) throw new Error("Request not found");
+
+    // Create the Org
+    await provisionOrg({
+      name: request.name,
+      slug: request.slug,
+    });
+
+    // Update request status
+    await prisma.orgRequest.update({
+      where: { id: requestId },
+      data: { status: "APPROVED" }
+    });
+
+    revalidatePath("/superadmin");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function rejectOrgRequest(requestId: string) {
+  try {
+    await prisma.orgRequest.update({
+      where: { id: requestId },
+      data: { status: "REJECTED" }
+    });
+    revalidatePath("/superadmin");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
