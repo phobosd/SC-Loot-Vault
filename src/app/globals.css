@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #0A0A12;
+  --foreground: #FFFFFF;
+  --sc-blue: #00D1FF;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Inter", sans-serif; /* Or a more "Sci-fi" font if available */
+  background-image: radial-gradient(circle at center, #1A1A2A 0%, #0A0A12 100%);
+  min-height: 100vh;
+}
+
+/* Star Citizen Glass Effect */
+.sc-glass {
+  background: rgba(10, 10, 20, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 209, 255, 0.1);
+}
+
+.sc-hud-border {
+  border-left: 2px solid var(--sc-blue);
+  background: linear-gradient(90deg, rgba(0, 209, 255, 0.05) 0%, transparent 100%);
+}
+
+.sc-hud-corner {
+  position: relative;
+}
+
+.sc-hud-corner::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid var(--sc-blue);
+  border-left: 2px solid var(--sc-blue);
+}
+
+.sc-hud-corner::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-bottom: 2px solid var(--sc-blue);
+  border-right: 2px solid var(--sc-blue);
 }

@@ -1,0 +1,158 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Multi-tenant Org support
+model Org {
+  id                String            @id @default(cuid())
+  name              String            @unique
+  slug              String            @unique
+  logoUrl           String?
+  primaryColor      String            @default("#121212")
+  accentColor       String            @default("#20C997")
+  googleSheetId     String?
+  discordBotToken   String?
+  discordGuildId    String?
+  
+  users             User[]
+  lootItems         LootItem[]
+  distributionLogs  DistributionLog[]
+  whitelabelConfig  WhitelabelConfig?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
+
+model WhitelabelConfig {
+  id          String   @id @default(cuid())
+  orgId       String   @unique
+  org         Org      @relation(fields: [orgId], references: [id])
+  themeJson   String?  // Store custom theme overrides (CSS vars, etc)
+  footerText  String?
+  headerText  String?
+}
+
+// User & RBAC
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  role          Role      @default(MEMBER)
+  orgId         String
+  org           Org       @relation(fields: [orgId], references: [id])
+  
+  accounts      Account[]
+  sessions      Session[]
+  distributions DistributionLog[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? 
+  access_token       String? 
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? 
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum Role {
+  MEMBER
+  ADMIN
+  SUPERADMIN
+}
+
+// The actual items currently in the Org's loot pool
+model LootItem {
+  id            String   @id @default(cuid())
+  orgId         String
+  org           Org      @relation(fields: [orgId], references: [id])
+  
+  name          String
+  category      String   // Ship Component, Weapon, Gear, Key, etc.
+  subCategory   String?  // e.g. "Power Plant", "Assault Rifle"
+  quantity      Int      @default(1)
+  
+  // Dynamic attributes for SC components
+  size          String?
+  class         String?
+  grade         String?
+  manufacturer  String?
+  
+  source        String?  // e.g. "Google Sheet", "Manual"
+  lastUpdatedBy String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Cache of all SC items from the Wiki API for autocomplete and metadata
+model SCItemCache {
+  id           String   @id @default(cuid())
+  wikiId       String   @unique
+  name         String
+  type         String   // component, weapon, armor, etc.
+  subType      String?
+  manufacturer String?
+  size         String?
+  grade        String?
+  class        String?
+  description  String?
+  imageUrl     String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// History of loot movement
+model DistributionLog {
+  id          String   @id @default(cuid())
+  orgId       String
+  org         Org      @relation(fields: [orgId], references: [id])
+  
+  recipientId String?
+  recipient   User?    @relation(fields: [recipientId], references: [id])
+  
+  itemName    String
+  quantity    Int
+  type        String   // "GIVEAWAY", "MANUAL", "WITHDRAWN"
+  method      String   // "RNG_WHEEL", "ADMIN_ASSIGN"
+  
+  performedBy String?  // Admin who did the action
+  timestamp   DateTime @default(now())
+}
