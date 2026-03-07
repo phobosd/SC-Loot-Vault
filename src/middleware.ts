@@ -6,7 +6,19 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
-    // Admin-only routes
+    // Unauthenticated handling
+    if (!token) {
+      if (path.startsWith("/api") && !path.startsWith("/api/auth")) {
+        return new NextResponse(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { 'content-type': 'application/json' } }
+        );
+      } else if (!path.startsWith("/api")) {
+         return NextResponse.redirect(new URL("/login", req.url));
+      }
+    }
+
+    // Admin-only UI routes
     if (path.startsWith("/users") || path.startsWith("/settings")) {
       if (token?.role !== "ADMIN" && token?.role !== "SUPERADMIN") {
         return NextResponse.redirect(new URL("/dashboard", req.url));
@@ -15,7 +27,7 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: () => true, // We handle the auth check inside the middleware to allow custom 401 responses for API
     },
     pages: {
       signIn: "/login",
@@ -32,5 +44,6 @@ export const config = {
     "/discord/:path*",
     "/distributions/:path*",
     "/logs/:path*",
+    "/api/:path*",
   ],
 };

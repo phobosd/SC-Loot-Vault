@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { requireAdmin, requireSuperAdmin } from "@/lib/auth-checks";
 
 export async function provisionOrg(data: {
   name: string;
@@ -10,6 +11,7 @@ export async function provisionOrg(data: {
   accentColor?: string;
 }) {
   try {
+    await requireSuperAdmin();
     const org = await prisma.org.create({
       data: {
         name: data.name,
@@ -39,6 +41,7 @@ export async function updateOrg(orgId: string, data: {
   accentColor: string;
 }) {
   try {
+    await requireSuperAdmin();
     await prisma.org.update({
       where: { id: orgId },
       data: {
@@ -57,6 +60,7 @@ export async function updateOrg(orgId: string, data: {
 
 export async function deleteOrg(orgId: string) {
   try {
+    await requireSuperAdmin();
     await prisma.org.delete({
       where: { id: orgId }
     });
@@ -72,6 +76,11 @@ export async function updateOrgDiscord(orgId: string, data: {
   discordGuildId?: string;
 }) {
   try {
+    const user = await requireAdmin();
+    if (user.role !== "SUPERADMIN" && user.orgId !== orgId) {
+      throw new Error("Forbidden: Cannot update Discord settings for another organization.");
+    }
+    
     await prisma.org.update({
       where: { id: orgId },
       data: {
@@ -99,6 +108,11 @@ export async function updateOrgSettings(orgId: string, data: {
   footerText?: string | null;
 }) {
   try {
+    const user = await requireAdmin();
+    if (user.role !== "SUPERADMIN" && user.orgId !== orgId) {
+      throw new Error("Forbidden: Cannot update settings for another organization.");
+    }
+
     await prisma.$transaction([
       prisma.org.update({
         where: { id: orgId },
@@ -143,6 +157,7 @@ export async function submitOrgRequest(data: {
   contactInfo: string;
 }) {
   try {
+    // This is public, no auth check needed
     const request = await prisma.orgRequest.create({
       data: {
         ...data,
@@ -158,6 +173,7 @@ export async function submitOrgRequest(data: {
 
 export async function approveOrgRequest(requestId: string) {
   try {
+    await requireSuperAdmin();
     const request = await prisma.orgRequest.findUnique({
       where: { id: requestId }
     });
@@ -185,6 +201,7 @@ export async function approveOrgRequest(requestId: string) {
 
 export async function rejectOrgRequest(requestId: string) {
   try {
+    await requireSuperAdmin();
     await prisma.orgRequest.update({
       where: { id: requestId },
       data: { status: "REJECTED" }

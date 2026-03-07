@@ -18,11 +18,17 @@ export async function GET(request: Request) {
   const isGlobalAdmin = session.user.role === 'SUPERADMIN' && !session.user.orgId;
 
   // Security: Only GLOBAL Root Admin can filter by arbitrary orgId
-  const targetOrgId = (isGlobalAdmin && orgId) ? orgId : session.user.orgId;
+  // ORG Admin should ONLY ever see their own orgId
+  const targetOrgId = isGlobalAdmin 
+    ? (orgId || null) 
+    : session.user.orgId;
 
   if (!targetOrgId && isGlobalAdmin) {
     // If Global Admin with no org and no specific orgId requested, return all users (capped)
     const users = await prisma.user.findMany({
+      where: {
+        username: { not: 'ADMIN' } // Hide root admin from general lists even for Superadmins
+      },
       select: { id: true, name: true, email: true, role: true, username: true, org: { select: { name: true } }, status: true },
       orderBy: { name: 'asc' },
       take: 100
@@ -35,9 +41,7 @@ export async function GET(request: Request) {
   }
 
   const where: any = { 
-    OR: [
-      { orgId: targetOrgId }
-    ]
+    orgId: targetOrgId
   };
 
   if (includeAllies) {
@@ -47,7 +51,7 @@ export async function GET(request: Request) {
     });
     const allyIds = alliances.map(a => a.allyId);
     if (allyIds.length > 0) {
-      where.OR.push({ orgId: { in: allyIds } });
+      where.orgId = { in: [targetOrgId, ...allyIds] };
     }
   }
 

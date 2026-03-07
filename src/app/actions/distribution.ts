@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { requireAdmin, requireAuth, requireOrgAccess } from "@/lib/auth-checks";
 
 export async function assignItemToOperator(data: {
   orgId: string;
@@ -12,14 +13,17 @@ export async function assignItemToOperator(data: {
   performedBy?: string;
 }) {
   try {
+    await requireAdmin();
+    await requireOrgAccess(data.orgId); // Verify admin has access to this org
+
     const result = await prisma.$transaction(async (tx) => {
       // 1. Get the item
       const item = await tx.lootItem.findUnique({
         where: { id: data.lootItemId }
       });
 
-      if (!item || item.quantity < data.quantity) {
-        throw new Error("Insufficient manifest quantity.");
+      if (!item || item.quantity < data.quantity || item.orgId !== data.orgId) {
+        throw new Error("Insufficient manifest quantity or unauthorized.");
       }
 
       // 2. Create the log entry
@@ -76,6 +80,9 @@ export async function recordDistribution(data: {
   lootItemId?: string;
 }) {
   try {
+    await requireAdmin();
+    await requireOrgAccess(data.orgId);
+
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create the log entry
       const log = await tx.distributionLog.create({
@@ -96,7 +103,7 @@ export async function recordDistribution(data: {
           where: { id: data.lootItemId }
         });
 
-        if (item) {
+        if (item && item.orgId === data.orgId) {
           if (item.quantity <= data.quantity) {
             await tx.lootItem.delete({ where: { id: data.lootItemId } });
           } else {
@@ -131,9 +138,19 @@ export async function createLootSession(data: {
   participantIds: string[];
 }) {
   try {
+    await requireAdmin();
+    await requireOrgAccess(data.orgId);
+
     const items = await prisma.lootItem.findMany({
-      where: { id: { in: data.itemIds } }
+      where: { 
+        id: { in: data.itemIds },
+        orgId: data.orgId // Verify all items belong to this org
+      }
     });
+
+    if (items.length !== data.itemIds.length) {
+       throw new Error("Some items were not found or do not belong to your organization.");
+    }
 
     const session = await prisma.lootSession.create({
       data: {
@@ -171,7 +188,21 @@ export async function claimLootSessionItem(data: {
   lootItemId: string; // The specific vault item
 }) {
   try {
+    const user = await requireAuth();
+    if (user.id !== data.userId && user.role !== "SUPERADMIN") {
+      throw new Error("Forbidden: Cannot claim items for another user.");
+    }
+
     const result = await prisma.$transaction(async (tx) => {
+      // Verify session exists and user is a participant
+      const session = await tx.lootSession.findUnique({
+         where: { id: data.sessionId },
+         include: { participants: true }
+      });
+      if (!session) throw new Error("Session not found");
+      const isParticipant = session.participants.some(p => p.userId === data.userId);
+      if (!isParticipant) throw new Error("User is not a participant in this session.");
+
       // 1. Mark participant as having opened
       await tx.lootSessionParticipant.update({
         where: {
@@ -191,8 +222,8 @@ export async function claimLootSessionItem(data: {
         where: { id: data.lootItemId }
       });
 
-      if (!item || item.quantity < 1) {
-        throw new Error("Target asset manifest depleted or offline.");
+      if (!item || item.quantity < 1 || item.orgId !== session.orgId) {
+        throw new Error("Target asset manifest depleted, offline, or unauthorized.");
       }
 
       // 3. Create assignment log

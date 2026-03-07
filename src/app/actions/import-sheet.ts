@@ -5,16 +5,13 @@ import { revalidatePath } from "next/cache";
 import Papa from "papaparse";
 import axios from "axios";
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin, requireAuth, requireOrgAccess } from "@/lib/auth-checks";
 
 export async function importGoogleSheet(orgId: string, sheetUrl: string, gid: string = "1808617689") {
-  const session: any = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPERADMIN')) {
-    throw new Error("Unauthorized: Administrative clearance required.");
-  }
-
   try {
+    await requireAdmin();
+    await requireOrgAccess(orgId);
+
     // ... rest of logic
   } catch (error: any) {
     if (error.response?.status === 401 || error.response?.status === 403) {
@@ -26,10 +23,8 @@ export async function importGoogleSheet(orgId: string, sheetUrl: string, gid: st
 }
 
 export async function previewGoogleSheet(sheetUrl: string, gid: string = "1808617689") {
-  const session: any = await getServerSession(authOptions);
-  if (!session?.user) throw new Error("Unauthorized");
-
   try {
+    await requireAuth();
     const sheetIdMatch = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
     if (!sheetIdMatch) throw new Error("Invalid Google Sheet URL");
     

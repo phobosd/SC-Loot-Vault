@@ -2,17 +2,16 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth-checks";
 
 export async function sendAllianceRequest(targetOrgId: string) {
-  const session: any = await getServerSession(authOptions);
-  if (!session?.user?.orgId) throw new Error("Unauthorized");
-
   try {
+    const user = await requireAdmin();
+    if (!user.orgId) throw new Error("Unauthorized: You must belong to an organization.");
+
     const request = await prisma.allianceRequest.create({
       data: {
-        senderOrgId: session.user.orgId,
+        senderOrgId: user.orgId,
         targetOrgId,
         status: "PENDING"
       }
@@ -25,15 +24,15 @@ export async function sendAllianceRequest(targetOrgId: string) {
 }
 
 export async function approveAllianceRequest(requestId: string) {
-  const session: any = await getServerSession(authOptions);
-  if (!session?.user?.orgId) throw new Error("Unauthorized");
-
   try {
+    const user = await requireAdmin();
+    if (!user.orgId) throw new Error("Unauthorized: You must belong to an organization.");
+
     const request = await prisma.allianceRequest.findUnique({
       where: { id: requestId }
     });
 
-    if (!request || request.targetOrgId !== session.user.orgId) {
+    if (!request || (request.targetOrgId !== user.orgId && user.role !== "SUPERADMIN")) {
       throw new Error("Invalid request or unauthorized.");
     }
 
@@ -59,10 +58,18 @@ export async function approveAllianceRequest(requestId: string) {
 }
 
 export async function rejectAllianceRequest(requestId: string) {
-  const session: any = await getServerSession(authOptions);
-  if (!session?.user?.orgId) throw new Error("Unauthorized");
-
   try {
+    const user = await requireAdmin();
+    if (!user.orgId) throw new Error("Unauthorized: You must belong to an organization.");
+
+    const request = await prisma.allianceRequest.findUnique({
+      where: { id: requestId }
+    });
+
+    if (!request || (request.targetOrgId !== user.orgId && user.role !== "SUPERADMIN")) {
+       throw new Error("Invalid request or unauthorized.");
+    }
+
     await prisma.allianceRequest.update({
       where: { id: requestId },
       data: { status: "REJECTED" }
@@ -75,15 +82,15 @@ export async function rejectAllianceRequest(requestId: string) {
 }
 
 export async function breakAlliance(allyId: string) {
-  const session: any = await getServerSession(authOptions);
-  if (!session?.user?.orgId) throw new Error("Unauthorized");
-
   try {
+    const user = await requireAdmin();
+    if (!user.orgId) throw new Error("Unauthorized: You must belong to an organization.");
+
     await prisma.alliance.deleteMany({
       where: {
         OR: [
-          { orgId: session.user.orgId, allyId },
-          { orgId: allyId, allyId: session.user.orgId }
+          { orgId: user.orgId, allyId },
+          { orgId: allyId, allyId: user.orgId }
         ]
       }
     });

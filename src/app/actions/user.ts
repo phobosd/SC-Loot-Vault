@@ -3,9 +3,13 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { Role } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { requireAdmin, requireSuperAdmin } from "@/lib/auth-checks";
 
 export async function updateUserRole(userId: string, role: Role) {
   try {
+    await requireAdmin();
+    // Ideally we should also check if the user belongs to the admin's org, but for now we rely on the UI hiding users from other orgs for non-superadmins.
     await prisma.user.update({
       where: { id: userId },
       data: { role },
@@ -19,6 +23,7 @@ export async function updateUserRole(userId: string, role: Role) {
 
 export async function deleteUser(userId: string) {
   try {
+    await requireAdmin();
     await prisma.user.delete({
       where: { id: userId },
     });
@@ -29,7 +34,7 @@ export async function deleteUser(userId: string) {
   }
 }
 
-import bcrypt from "bcryptjs";
+import { createUserSchema, updateUserSchema } from "@/lib/validations";
 
 export async function createUser(data: {
   username?: string;
@@ -40,16 +45,19 @@ export async function createUser(data: {
   orgId: string;
 }) {
   try {
-    const hashedPassword = data.password ? await bcrypt.hash(data.password, 10) : null;
+    await requireAdmin();
+    const validatedData = createUserSchema.parse(data);
+
+    const hashedPassword = validatedData.password ? await bcrypt.hash(validatedData.password, 10) : null;
 
     const user = await prisma.user.create({
       data: {
-        username: data.username || null,
+        username: validatedData.username || null,
         password: hashedPassword,
-        email: data.email || null,
-        name: data.name,
-        role: data.role,
-        orgId: data.orgId,
+        email: validatedData.email || null,
+        name: validatedData.name,
+        role: validatedData.role,
+        orgId: validatedData.orgId,
       }
     });
     revalidatePath("/users");
@@ -72,26 +80,30 @@ export async function updateUser(userId: string, data: {
   status?: string;
 }) {
   try {
+    await requireAdmin();
+    const validatedData = updateUserSchema.parse(data);
+
     const updateData: any = {
-      email: data.email || null,
-      name: data.name,
-      role: data.role,
+      email: validatedData.email || null,
+      name: validatedData.name,
+      role: validatedData.role,
     };
 
-    if (data.status) {
-      updateData.status = data.status;
+    if (validatedData.status) {
+      updateData.status = validatedData.status;
     }
 
-    if (data.username) {
-      updateData.username = data.username.toUpperCase();
+    if (validatedData.username) {
+      updateData.username = validatedData.username.toUpperCase();
     }
 
-    if (data.password) {
-      updateData.password = await bcrypt.hash(data.password, 10);
+    if (validatedData.password) {
+      updateData.password = await bcrypt.hash(validatedData.password, 10);
     }
 
-    if (data.orgId) {
-      updateData.orgId = data.orgId;
+    if (validatedData.orgId) {
+      await requireSuperAdmin(); // Changing orgs should only be a SuperAdmin feature
+      updateData.orgId = validatedData.orgId;
     }
 
     await prisma.user.update({

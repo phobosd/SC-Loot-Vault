@@ -105,7 +105,7 @@ export function AddItemDialog({ orgId, trigger }: AddItemDialogProps) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="sc-glass w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-sc-blue/30">
+      <div className="sc-glass w-full max-w-md animate-in zoom-in-95 duration-200 border-sc-blue/30">
         <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-sc-blue/5">
           <div className="flex items-center gap-3">
             <Box className="w-5 h-5 text-sc-blue" />
@@ -120,7 +120,7 @@ export function AddItemDialog({ orgId, trigger }: AddItemDialogProps) {
         </div>
 
         <div className="p-6 space-y-6">
-          <div className="space-y-2">
+          <div className="space-y-2 relative">
             <label className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Identify Item</label>
             <div className="relative">
               <input 
@@ -138,7 +138,7 @@ export function AddItemDialog({ orgId, trigger }: AddItemDialogProps) {
             </div>
 
             {suggestions.length > 0 && (
-              <div className="absolute left-6 right-6 mt-1 sc-glass border border-sc-blue/50 shadow-2xl z-[110] max-h-60 overflow-y-auto bg-[#0A0A12]">
+              <div className="absolute left-0 right-0 mt-1 sc-glass border border-sc-blue/50 shadow-2xl z-[110] max-h-60 overflow-y-auto bg-[#0A0A12]">
                 {suggestions.map((s) => (
                   <button
                     key={s.wikiId}

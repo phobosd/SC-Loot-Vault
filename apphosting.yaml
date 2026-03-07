@@ -11,7 +11,7 @@ env:
   - variable: NEXTAUTH_SECRET
     secret: NEXTAUTH_SECRET_SECRET
   - variable: NEXTAUTH_URL
-    value: "https://sc-loot--sc-vault-1b5ac.us-east4.hosted.app"
+    value: "https://sc-vault.network"
   - variable: DISCORD_CLIENT_ID
     value: "placeholder"
   - variable: DISCORD_CLIENT_SECRET

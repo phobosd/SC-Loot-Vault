@@ -25,5 +25,10 @@ export async function GET() {
     }
   });
 
+  if (org) {
+    // Prevent sensitive token from reaching the client
+    (org as any).discordBotToken = undefined;
+  }
+
   return NextResponse.json(org);
 }

@@ -2,8 +2,9 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin, requireAuth, requireOrgAccess } from "@/lib/auth-checks";
+
+import { addLootItemsSchema } from "@/lib/validations";
 
 export async function addLootItems(items: {
   orgId: string;
@@ -17,14 +18,23 @@ export async function addLootItems(items: {
   manufacturer?: string | null;
 }[]) {
   try {
-    const validItems = items.filter(i => i.name.trim() !== "");
+    const user = await requireAdmin();
+    const validatedItems = addLootItemsSchema.parse(items);
+    
+    const validItems = validatedItems.filter(i => i.name.trim() !== "");
     
     if (validItems.length === 0) return { success: false, error: "No valid items to add." };
+
+    // Verify user has access to add to this org (unless superadmin)
+    if (user.role !== "SUPERADMIN" && validItems.some(i => i.orgId !== user.orgId)) {
+       throw new Error("Forbidden: Cannot add items to an organization you do not belong to.");
+    }
 
     await prisma.lootItem.createMany({
       data: validItems.map(i => ({
         ...i,
-        source: "Manual Entry"
+        source: "Manual Entry",
+        lastUpdatedBy: user.username
       }))
     });
 
@@ -38,15 +48,14 @@ export async function addLootItems(items: {
 }
 
 export async function removeLootItems(itemIds: string[]) {
-  const session: any = await getServerSession(authOptions);
-  if (!session?.user?.orgId) throw new Error("Unauthorized");
-
   try {
+    const user = await requireAdmin();
+
     // Only delete items that belong to the user's organization
     await prisma.lootItem.deleteMany({
       where: {
         id: { in: itemIds },
-        orgId: session.user.orgId
+        ...(user.role !== "SUPERADMIN" ? { orgId: user.orgId } : {})
       }
     });
     revalidatePath("/vault");
@@ -59,9 +68,19 @@ export async function removeLootItems(itemIds: string[]) {
 
 export async function updateLootItem(itemId: string, quantity: number) {
   try {
+    const user = await requireAdmin();
+    
+    // First find the item to ensure it belongs to the admin's org
+    const item = await prisma.lootItem.findUnique({ where: { id: itemId }});
+    if (!item) throw new Error("Item not found");
+    
+    if (user.role !== "SUPERADMIN" && item.orgId !== user.orgId) {
+       throw new Error("Forbidden: Cannot update items in another organization.");
+    }
+
     await prisma.lootItem.update({
       where: { id: itemId },
-      data: { quantity }
+      data: { quantity, lastUpdatedBy: user.username }
     });
     revalidatePath("/vault");
     revalidatePath("/dashboard");
@@ -73,6 +92,11 @@ export async function updateLootItem(itemId: string, quantity: number) {
 
 export async function wipeLootManifest(orgId: string) {
   try {
+    const user = await requireAdmin();
+    if (user.role !== "SUPERADMIN" && user.orgId !== orgId) {
+      throw new Error("Forbidden: Cannot wipe another organization's manifest.");
+    }
+
     await prisma.lootItem.deleteMany({
       where: { orgId }
     });
@@ -94,6 +118,11 @@ export async function createLootRequest(data: {
   targetOrgId?: string | null;
 }) {
   try {
+    const user = await requireAuth();
+    if (user.id !== data.userId && user.role !== "SUPERADMIN") {
+      throw new Error("Forbidden: Cannot create a request for another user.");
+    }
+
     const request = await prisma.lootRequest.create({
       data: {
         orgId: data.orgId,
@@ -116,6 +145,8 @@ export async function createLootRequest(data: {
 
 export async function approveLootRequest(requestId: string, adminId: string) {
   try {
+    const admin = await requireAdmin();
+    
     const request = await prisma.lootRequest.findUnique({
       where: { id: requestId },
       include: { org: true, user: true }
@@ -123,6 +154,11 @@ export async function approveLootRequest(requestId: string, adminId: string) {
 
     if (!request) throw new Error("Request not found.");
     if (request.status !== "PENDING") throw new Error("Request already processed.");
+
+    const targetOrgId = request.targetOrgId || request.orgId;
+    if (admin.role !== "SUPERADMIN" && admin.orgId !== targetOrgId) {
+      throw new Error("Forbidden: You do not have permission to approve requests for this organization.");
+    }
 
     // 1. Check vault availability
     const vaultItem = await prisma.lootItem.findUnique({
@@ -143,13 +179,13 @@ export async function approveLootRequest(requestId: string, adminId: string) {
       // Create assignment log
       prisma.distributionLog.create({
         data: {
-          orgId: request.orgId,
+          orgId: targetOrgId,
           recipientId: request.userId,
           itemName: request.itemName,
           quantity: request.quantity,
           type: "ASSIGNED",
           method: "REQUEST_APPROVAL",
-          performedBy: adminId
+          performedBy: admin.username || adminId
         }
       }),
       // Update request status
@@ -170,6 +206,19 @@ export async function approveLootRequest(requestId: string, adminId: string) {
 
 export async function rejectLootRequest(requestId: string, reason: string) {
   try {
+    const admin = await requireAdmin();
+    
+    const request = await prisma.lootRequest.findUnique({
+      where: { id: requestId }
+    });
+    
+    if (!request) throw new Error("Request not found");
+    
+    const targetOrgId = request.targetOrgId || request.orgId;
+    if (admin.role !== "SUPERADMIN" && admin.orgId !== targetOrgId) {
+      throw new Error("Forbidden: You do not have permission to reject requests for this organization.");
+    }
+
     await prisma.lootRequest.update({
       where: { id: requestId },
       data: { 
