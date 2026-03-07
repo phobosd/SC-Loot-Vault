@@ -57,7 +57,7 @@ export default function RequestNexusPage() {
             <Globe className="w-10 h-10 text-sc-blue animate-pulse" />
           </div>
           <div>
-            <h1 className="text-3xl font-black tracking-[0.5em] text-white uppercase">Nexus Integration</h1>
+            <h1 className="text-3xl font-black tracking-[0.5em] text-white uppercase">Org Signup</h1>
             <p className="text-xs text-sc-blue/60 font-mono tracking-widest uppercase mt-2">
               Organization Onboarding Protocol // AWAITING TELEMETRY
             </p>
@@ -73,7 +73,7 @@ export default function RequestNexusPage() {
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold text-white uppercase tracking-widest">Application Transmitted</h2>
                 <p className="text-sm text-gray-500 font-mono leading-relaxed max-w-md mx-auto">
-                  Your organization's telemetry has been received. A Galactic Root Administrator will review your request for Nexus integration.
+                  Your organization's telemetry has been received. A Galactic Root Administrator will review your request for enrollment.
                 </p>
               </div>
               <Link href="/login" className="inline-flex items-center gap-2 text-sc-blue hover:text-white transition-colors text-xs font-bold uppercase tracking-widest">
@@ -92,7 +92,7 @@ export default function RequestNexusPage() {
                 <h3 className="text-[10px] font-black text-sc-blue uppercase tracking-[0.3em] border-b border-sc-blue/20 pb-2">Org Intelligence</h3>
                 
                 <div className="space-y-2">
-                  <label className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">Organization Designation</label>
+                  <label className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">Organization Designation (ORG NAME)</label>
                   <input 
                     type="text" required value={name} onChange={(e) => setName(e.target.value)}
                     placeholder="E.G. AEGIS DYNAMICS" 
@@ -142,7 +142,7 @@ export default function RequestNexusPage() {
                   className="w-full py-5 bg-sc-blue/20 hover:bg-sc-blue/30 border border-sc-blue/50 text-sc-blue text-xs font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,209,255,0.1)]"
                 >
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
-                  Request Nexus Integration
+                  Submit Org Signup
                 </button>
                 <div className="mt-6 text-center">
                   <Link href="/login" className="text-[9px] text-gray-600 hover:text-white uppercase tracking-[0.2em] transition-colors">

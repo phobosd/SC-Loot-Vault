@@ -142,7 +142,7 @@ export default function LoginPage() {
               onClick={() => router.push("/signup")}
               className="text-[10px] text-sc-blue/40 hover:text-sc-blue uppercase tracking-widest transition-colors font-mono underline underline-offset-4"
             >
-              Request Public Enrollment
+              Request Membership or Org Signup
             </button>
           </div>
         </div>

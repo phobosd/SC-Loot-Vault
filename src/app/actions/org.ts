@@ -16,7 +16,7 @@ export async function provisionOrg(data: {
   accentColor?: string;
 }) {
   try {
-    await requireSuperAdmin();
+    const superAdmin = await requireSuperAdmin();
     
     // 1. Create the Org
     const org = await prisma.org.create({
@@ -100,7 +100,7 @@ export async function updateOrg(orgId: string, data: {
   accentColor: string;
 }) {
   try {
-    await requireSuperAdmin();
+    const superAdmin = await requireSuperAdmin();
     const org = await prisma.org.update({
       where: { id: orgId },
       data: {
@@ -296,7 +296,7 @@ export async function submitOrgRequest(data: {
     // Global Log for Org Request
     await prisma.distributionLog.create({
       data: {
-        itemName: `Nexus Integration Requested: ${data.name}`,
+        itemName: `Org Signup Requested: ${data.name}`,
         quantity: 1,
         type: "ORG_REQUEST",
         method: "PUBLIC_SIGNUP",
@@ -315,7 +315,7 @@ export async function submitOrgRequest(data: {
 
 export async function approveOrgRequest(requestId: string) {
   try {
-    await requireSuperAdmin();
+    const superAdmin = await requireSuperAdmin();
     const request = await prisma.orgRequest.findUnique({
       where: { id: requestId }
     });

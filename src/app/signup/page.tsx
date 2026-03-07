@@ -114,7 +114,7 @@ export default function UnifiedSignupPage() {
           <div>
             <h1 className="text-3xl font-black tracking-[0.5em] text-white uppercase">Vault Enrollment</h1>
             <p className="text-xs text-sc-blue/60 font-mono tracking-widest uppercase mt-2">
-              System Access Initialization // {activeTab === "operator" ? "OPERATOR-NODE" : "NEXUS-INTEGRATION"}
+              System Access Initialization // {activeTab === "operator" ? "MEMBER-LINK" : "ORG-PROVISIONING"}
             </p>
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function UnifiedSignupPage() {
                   activeTab === "operator" ? "text-sc-blue border-sc-blue" : "text-gray-600 border-transparent hover:text-gray-400"
                 )}
               >
-                Operator Link
+                Org Member Signup
               </button>
               <button 
                 onClick={() => { setActiveTab("org"); setError(""); }}
@@ -139,7 +139,7 @@ export default function UnifiedSignupPage() {
                   activeTab === "org" ? "text-sc-gold border-sc-gold" : "text-gray-600 border-transparent hover:text-gray-400"
                 )}
               >
-                Nexus Integration
+                Org Signup
               </button>
             </div>
           )}
@@ -157,8 +157,8 @@ export default function UnifiedSignupPage() {
                 <h2 className="text-2xl font-bold text-white uppercase tracking-widest">Transmission Successful</h2>
                 <p className="text-sm text-gray-500 font-mono leading-relaxed max-w-md mx-auto">
                   {activeTab === "operator" 
-                    ? "Your operator designation has been verified. Redirecting to login..."
-                    : "Nexus integration request transmitted. A SuperAdmin will review your telemetry shortly."}
+                    ? "Your membership request has been submitted. Redirecting to login..."
+                    : "Organization enrollment request transmitted. A SuperAdmin will review your telemetry shortly."}
                 </p>
               </div>
               {activeTab === "org" && (
