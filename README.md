@@ -1,10 +1,10 @@
 # 🚀 SC Org Loot Vault
 
-An immersive, high-tech Star Citizen Organization Loot Vault Manager. This platform allows Orgs to track, manage, and distribute loot (Ship Components, Weapons, and Armor) with a Star Citizen-inspired HUD aesthetic. Hosted locally on Mac mini, exposed via Cloudflare Tunnels, and backed by a robust multi-tenant architecture.
+An immersive, high-tech Star Citizen Organization Loot Vault Manager. This platform allows Orgs to track, manage, and distribute loot (Ship Components, Weapons, and Armor) with a Star Citizen-inspired HUD aesthetic. Cloud-native architecture hosted on **Firebase App Hosting** and backed by **Neon PostgreSQL**.
 
 ![License](https://img.shields.io/badge/Clearance-Level_9-blue?style=flat-square)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
-![Database](https://img.shields.io/badge/Database-SQLite/Prisma-blue?style=flat-square)
+![Database](https://img.shields.io/badge/Database-PostgreSQL/Neon-blue?style=flat-square)
 ![Theme](https://img.shields.io/badge/Theme-Dynamic_HUD-00D1FF?style=flat-square)
 
 ---
@@ -14,11 +14,12 @@ An immersive, high-tech Star Citizen Organization Loot Vault Manager. This platf
 - **Framework:** Next.js 16 (App Router / Turbopack)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS 4 + `tailwindcss-animate`
-- **Database:** Prisma ORM with SQLite (Local-first)
+- **Database:** Prisma ORM with **Neon PostgreSQL** (Serverless)
+- **Hosting:** **Firebase App Hosting** (Cloud Run based)
 - **Authentication:** NextAuth.js v4 (Credentials & Discord OAuth)
 - **API Integration:** Star Citizen Wiki API (Automatic Telemetry)
 - **Real-time:** Server Actions, Revalidation, and Dynamic Polling
-- **Icons:** Lucide React
+- **Validation:** Zod (Type-safe input validation)
 
 ---
 
@@ -34,30 +35,27 @@ An immersive, high-tech Star Citizen Organization Loot Vault Manager. This platf
 - **Diplomatic Handshakes:** Send and authorize alliance requests between organizations.
 - **Mutual Vault Visibility:** Allied orgs can browse each other's manifests in a secure, read-only mode.
 - **Cross-Org Requests:** Request specific loot directly from an ally's inventory.
-- **Joint Distributions:** Include allied personnel in your RNG drawings for combined operation events.
+- **Global Command (SuperAdmin):** Direct oversight and manual override of all diplomatic links in the network.
+
+### 📜 Master Audit Manifest
+- **Full Transparency:** Every action (Loot added, Alliances created, Personnel enrollment) is recorded in a permanent audit trail.
+- **Global View:** SuperAdmins have a unified, network-wide transaction manifest for total oversight.
+- **Local History:** Organizations maintain their own internal logs for accounting and member activity tracking.
+
+### 🛡️ Nexus Security Suite
+- **RBAC Enforcement:** Strict Role-Based Access Control (MEMBER, ADMIN, SUPERADMIN).
+- **Organization Isolation:** Multi-tenant architecture ensures data is strictly isolated between organization nodes.
+- **Input Hardening:** All telemetry inputs are validated via Zod to prevent malformed data injections.
 
 ### 🎡 Advanced RNG Distribution
 - **Dual Modes:** Toggle between **Operator Wheel** (winner gets pooled items) and **Item Roulette** (lone recipient wins one of many items).
 - **Dynamic Selection:** Real-time multi-select and "Select All" tools for designating eligible operators.
 - **Joint Selection:** Automatically includes allied personnel nodes when diplomatic links are active.
-- **High-Tech UI:** Sliding pill-toggle interface with glowing HUD accents and hardware-entropy simulation.
 
 ### 🤖 Discord Manifest Bridge
 - **Advanced Commands:** Supports both Prefix (`!vault`) and Slash (`/`) commands.
 - **Account Linking:** Tie Discord IDs to Vault Operator identities via `/link-account`.
 - **Remote Commands:** Access `/my-assets`, `/request-asset`, and `/vault-status` directly from your comms channel.
-- **Real-time Heartbeat:** Live "OPERATIONAL" status indicator in the dashboard with pulse tracking.
-
-### 🎨 Deep Customization & Branding
-- **Dynamic Theming:** Custom control over **Primary Background**, **Accent HUD**, **Secondary Highlights**, **Success**, and **Danger** colors.
-- **Identity Assets:** Upload local logo files (512x512) or link external resources.
-- **Global UI Overrides:** Customize header and footer designations per organization.
-- **bespoke Sidebar:** The entire navigation system reacts dynamically to your org's chosen color scheme.
-
-### 🌌 Nexus Core (Global Admin)
-- **Root Isolation:** The global admin (`ADMIN`) exists independently of specific organizations.
-- **Impersonation Protocol:** Direct control over any organization node for administrative oversight.
-- **Network Telemetry:** Oversee total organizations, global personnel, and network-wide asset counts.
 
 ---
 
@@ -79,7 +77,7 @@ An immersive, high-tech Star Citizen Organization Loot Vault Manager. This platf
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-repo/sc-loot-vault.git
+git clone https://github.com/phobosd/SC-Loot-Vault.git
 cd sc-loot-vault
 ```
 
@@ -91,9 +89,9 @@ npm install
 ### 3. Environment Configuration
 Create a `.env` file in the root directory:
 ```env
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://user:password@hostname/dbname?sslmode=require"
 NEXTAUTH_SECRET="your-secret-key"
-NEXTAUTH_URL="https://sc-vault-1b5ac.web.app"
+NEXTAUTH_URL="http://localhost:3000"
 
 # OAuth Clearances
 DISCORD_CLIENT_ID="your-id"
@@ -102,35 +100,35 @@ DISCORD_CLIENT_SECRET="your-secret"
 
 ### 4. Initialize Database & Cache
 ```bash
+npx prisma generate
 npx prisma db push
 npx ts-node scripts/seed-initial-org.ts
 npx ts-node scripts/seed-sc-items.ts
 ```
 
-### 5. Start Service Manager
-Use the included shell script to manage PM2 processes:
+### 5. Start Development Server
 ```bash
-chmod +x manage-vault.sh
-./manage-vault.sh restart
+npm run dev
 ```
 
 ---
 
-## 🔗 Deployment & Tunneling
+## 🔗 Deployment
 
-This platform is optimized for local hosting on a Mac mini. To expose it to your Org members:
+This platform is optimized for **Firebase App Hosting**. 
 
-1. **Cloudflare Tunnel:** Use `cloudflared` to route your local port `8081` to a public URL.
-2. **Stealth Masking:** The application is designed to run inside an iframe via Firebase Hosting for a seamless domain experience.
-3. **Route Sync:** Integrated `postMessage` listeners ensure the browser address bar stays in sync between the parent window and the local node.
+1. **Connect Repository:** Link your GitHub repo in the Firebase Console under App Hosting.
+2. **Configure Secrets:** Set `DATABASE_URL_SECRET` and `NEXTAUTH_SECRET_SECRET` in Google Cloud Secret Manager.
+3. **Automatic Build:** Every push to the `main` branch triggers an automated build and rollout to your production domain (e.g., `sc-vault.network`).
 
 ---
 
 ## 📜 Technical Protocol
 
 - **Node Version:** 20.x+
-- **Database Engine:** SQLite 3
+- **Database Engine:** PostgreSQL (Neon)
 - **Styling:** Tailwind CSS 4.0
+- **Validation:** Zod
 - **Data Source:** [Star Citizen Wiki API](https://api.star-citizen.wiki/)
 
 ---
