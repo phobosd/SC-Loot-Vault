@@ -30,49 +30,56 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session: any = await getServerSession(authOptions);
-  let themeStyles: any = {};
+  
+  // Default values
+  let accent = "#00D1FF";
+  let primary = "#05050A";
+  let secondary = "#E0B130";
+  let success = "#00FFC2";
+  let danger = "#FF4D4D";
+  let text = "#FFFFFF";
 
   if (session?.user?.orgId) {
     const org = await prisma.org.findUnique({
       where: { id: session.user.orgId }
     });
     if (org) {
-      const accent = org.accentColor || "#00D1FF";
-      const primary = org.primaryColor || "#05050A";
-      const secondary = org.secondaryColor || "#E0B130";
-      const success = org.successColor || "#00FFC2";
-      const danger = org.dangerColor || "#FF4D4D";
-      const text = org.textColor || "#FFFFFF";
-
-      const accentRgb = hexToRgb(accent);
-      const primaryRgb = hexToRgb(primary);
-      const secondaryRgb = hexToRgb(secondary);
-      const successRgb = hexToRgb(success);
-      const dangerRgb = hexToRgb(danger);
-      
-      themeStyles = {
-        "--sc-blue": accent,
-        "--sc-blue-rgb": accentRgb,
-        "--sc-bg": primary,
-        "--sc-bg-rgb": primaryRgb,
-        "--sc-gold": secondary,
-        "--sc-gold-rgb": secondaryRgb,
-        "--sc-green": success,
-        "--sc-green-rgb": successRgb,
-        "--sc-red": danger,
-        "--sc-red-rgb": dangerRgb,
-        "--sc-text": text,
-        "--sc-border": `rgba(${accentRgb}, 0.2)`,
-        "--sc-surface": `rgba(${primaryRgb}, 0.85)`,
-      };
+      accent = org.accentColor || "#00D1FF";
+      primary = org.primaryColor || "#05050A";
+      secondary = org.secondaryColor || "#E0B130";
+      success = org.successColor || "#00FFC2";
+      danger = org.dangerColor || "#FF4D4D";
+      text = org.textColor || "#FFFFFF";
     }
   }
+
+  const accentRgb = hexToRgb(accent);
+  const primaryRgb = hexToRgb(primary);
+  const secondaryRgb = hexToRgb(secondary);
+  const successRgb = hexToRgb(success);
+  const dangerRgb = hexToRgb(danger);
+  
+  const themeStyles = {
+    "--sc-blue": accent,
+    "--sc-blue-rgb": accentRgb,
+    "--sc-bg": primary,
+    "--sc-bg-rgb": primaryRgb,
+    "--sc-gold": secondary,
+    "--sc-gold-rgb": secondaryRgb,
+    "--sc-green": success,
+    "--sc-green-rgb": successRgb,
+    "--sc-red": danger,
+    "--sc-red-rgb": dangerRgb,
+    "--sc-text": text,
+    "--sc-border": `rgba(${accentRgb}, 0.2)`,
+    "--sc-surface": `rgba(${primaryRgb}, 0.85)`,
+  };
 
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen flex overflow-hidden`}
-        style={themeStyles}
+        style={themeStyles as any}
       >
         <AuthProvider>
           <Suspense fallback={null}>

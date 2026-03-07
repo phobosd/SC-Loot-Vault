@@ -1,0 +1,21 @@
+# Firebase App Hosting Configuration
+# For sc-vault-1b5ac
+
+env:
+  - variable: DATABASE_URL
+    secret: DATABASE_URL_SECRET
+  - variable: NEXTAUTH_SECRET
+    secret: NEXTAUTH_SECRET_SECRET
+  - variable: NEXTAUTH_URL
+    value: "https://sc-vault-1b5ac.web.app"
+  - variable: DISCORD_CLIENT_ID
+    value: ""
+  - variable: DISCORD_CLIENT_SECRET
+    secret: DISCORD_CLIENT_SECRET_SECRET
+  - variable: GOOGLE_CLIENT_ID
+    value: ""
+  - variable: GOOGLE_CLIENT_SECRET
+    secret: GOOGLE_CLIENT_SECRET_SECRET
+
+# Note: You will need to create these secrets in the 
+# Google Cloud Secret Manager for your Firebase project.

@@ -135,9 +135,11 @@ export function DiscordBotUI({ org, botCommands, isOnline: initialOnline }: Disc
             <div className="p-3 bg-black/40 rounded border border-white/5">
               <p className="text-[9px] text-gray-500 font-mono uppercase tracking-tighter mb-2">Link Node</p>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[9px] font-mono text-gray-600 truncate uppercase">vault.andypace.com</span>
+                <span className="text-[9px] font-mono text-gray-600 truncate uppercase">
+                  {typeof window !== 'undefined' ? window.location.host : 'VAULT_URL'}
+                </span>
                 <button 
-                  onClick={() => navigator.clipboard.writeText("https://vault.andypace.com")}
+                  onClick={() => navigator.clipboard.writeText(typeof window !== 'undefined' ? window.location.origin : '')}
                   className="p-1 hover:bg-white/5 rounded"
                 >
                   <Copy className="w-3 h-3 text-gray-700 cursor-pointer" />

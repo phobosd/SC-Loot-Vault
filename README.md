@@ -93,7 +93,7 @@ Create a `.env` file in the root directory:
 ```env
 DATABASE_URL="file:./dev.db"
 NEXTAUTH_SECRET="your-secret-key"
-NEXTAUTH_URL="https://vault.andypace.com"
+NEXTAUTH_URL="https://sc-vault-1b5ac.web.app"
 
 # OAuth Clearances
 DISCORD_CLIENT_ID="your-id"
