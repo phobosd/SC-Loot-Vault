@@ -24,7 +24,8 @@ export default async function LogsPage() {
     where: isGlobalAdmin && !org ? {} : { orgId: org?.id || 'UNDEFINED' },
     orderBy: { timestamp: 'desc' },
     include: {
-      recipient: true
+      recipient: true,
+      org: { select: { name: true } }
     }
   });
 
@@ -42,7 +43,7 @@ export default async function LogsPage() {
         </div>
       </div>
 
-      <LogTable initialLogs={logs} />
+      <LogTable initialLogs={logs} isGlobalView={isGlobalAdmin && !org} />
     </div>
   );
 }

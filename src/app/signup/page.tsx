@@ -231,7 +231,7 @@ export default function UnifiedSignupPage() {
           ) : (
             <form onSubmit={handleOrgRequest} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="space-y-2">
-                <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Org Designation</label>
+                <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Org Designation (ORG NAME)</label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sc-gold/40" />
                   <input 
@@ -244,7 +244,7 @@ export default function UnifiedSignupPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Lead Admin Designation</label>
+                  <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Lead Admin Designation (ADMIN USERNAME)</label>
                   <div className="relative">
                     <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sc-gold/40" />
                     <input 

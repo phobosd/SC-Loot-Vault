@@ -38,8 +38,21 @@ export async function addLootItems(items: {
       }))
     });
 
+    // Log the addition
+    await prisma.distributionLog.create({
+      data: {
+        orgId: user.role === "SUPERADMIN" ? validItems[0].orgId : user.orgId!,
+        itemName: `Manifest Expansion: ${validItems.length} types added`,
+        quantity: validItems.reduce((acc, i) => acc + i.quantity, 0),
+        type: "MANIFEST_ADD",
+        method: "MANUAL_ENTRY",
+        performedBy: user.username || "ADMIN"
+      }
+    });
+
     revalidatePath("/vault");
     revalidatePath("/dashboard");
+    revalidatePath("/logs");
     return { success: true, count: validItems.length };
   } catch (error: any) {
     console.error("Error adding loot:", error);
@@ -58,8 +71,22 @@ export async function removeLootItems(itemIds: string[]) {
         ...(user.role !== "SUPERADMIN" ? { orgId: user.orgId } : {})
       }
     });
+
+    // Log the removal
+    await prisma.distributionLog.create({
+      data: {
+        orgId: user.orgId || "NEXUS",
+        itemName: `Manifest Purge: ${itemIds.length} items removed`,
+        quantity: itemIds.length,
+        type: "MANIFEST_REMOVE",
+        method: "MANUAL_DELETION",
+        performedBy: user.username || "ADMIN"
+      }
+    });
+
     revalidatePath("/vault");
     revalidatePath("/dashboard");
+    revalidatePath("/logs");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

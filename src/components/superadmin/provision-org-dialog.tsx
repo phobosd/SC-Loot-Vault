@@ -100,7 +100,7 @@ export function ProvisionOrgDialog() {
 
           <div className="space-y-4 pt-2 border-t border-white/5">
             <div className="space-y-2">
-              <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Lead Admin Designation</label>
+              <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Lead Admin Designation (ADMIN USERNAME)</label>
               <div className="relative">
                 <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input 

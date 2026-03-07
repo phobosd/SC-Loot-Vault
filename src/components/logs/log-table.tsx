@@ -9,12 +9,14 @@ import {
   RotateCw,
   Box
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface LogTableProps {
   initialLogs: any[];
+  isGlobalView?: boolean;
 }
 
-export function LogTable({ initialLogs }: LogTableProps) {
+export function LogTable({ initialLogs, isGlobalView }: LogTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredLogs = initialLogs.filter((log) => {
@@ -23,7 +25,8 @@ export function LogTable({ initialLogs }: LogTableProps) {
       log.itemName.toLowerCase().includes(searchLower) ||
       log.recipient?.name?.toLowerCase().includes(searchLower) ||
       log.type.toLowerCase().includes(searchLower) ||
-      log.method.toLowerCase().includes(searchLower)
+      log.method.toLowerCase().includes(searchLower) ||
+      (isGlobalView && log.org?.name?.toLowerCase().includes(searchLower))
     );
   });
 
@@ -37,7 +40,7 @@ export function LogTable({ initialLogs }: LogTableProps) {
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="SEARCH TRANSACTIONS (ITEM / OPERATOR / TYPE)..." 
+            placeholder={isGlobalView ? "SEARCH GLOBAL LOGS (ITEM / OPERATOR / ORG / TYPE)..." : "SEARCH TRANSACTIONS (ITEM / OPERATOR / TYPE)..."} 
             className="w-full bg-black/40 border border-white/10 pl-10 pr-4 py-2 text-xs font-mono text-sc-blue focus:outline-none focus:border-sc-blue/50 transition-colors uppercase tracking-widest"
           />
         </div>
@@ -54,6 +57,9 @@ export function LogTable({ initialLogs }: LogTableProps) {
           <thead>
             <tr className="bg-sc-blue/5 border-b border-sc-blue/20">
               <th className="px-6 py-4 text-[10px] font-bold text-sc-blue uppercase tracking-widest">Timestamp</th>
+              {isGlobalView && (
+                <th className="px-6 py-4 text-[10px] font-bold text-sc-blue uppercase tracking-widest">Organization</th>
+              )}
               <th className="px-6 py-4 text-[10px] font-bold text-sc-blue uppercase tracking-widest">Action</th>
               <th className="px-6 py-4 text-[10px] font-bold text-sc-blue uppercase tracking-widest">Item Manifest</th>
               <th className="px-6 py-4 text-[10px] font-bold text-sc-blue uppercase tracking-widest">Recipient</th>
@@ -64,7 +70,7 @@ export function LogTable({ initialLogs }: LogTableProps) {
           <tbody className="divide-y divide-white/5">
             {filteredLogs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-20 text-center">
+                <td colSpan={isGlobalView ? 7 : 6} className="px-6 py-20 text-center">
                   <p className="text-gray-600 font-mono uppercase text-xs">No transaction history detected.</p>
                 </td>
               </tr>
@@ -74,17 +80,25 @@ export function LogTable({ initialLogs }: LogTableProps) {
                   <td className="px-6 py-4">
                     <p className="text-[10px] font-mono text-gray-500">{new Date(log.timestamp).toLocaleString()}</p>
                   </td>
+                  {isGlobalView && (
+                    <td className="px-6 py-4">
+                      <span className="text-[10px] text-sc-blue font-mono uppercase tracking-widest px-2 py-1 bg-sc-blue/5 border border-sc-blue/20 rounded">
+                        {log.org?.name || "NEXUS"}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      {log.type === "WITHDRAWN" ? (
+                      {log.type === "WITHDRAWN" || log.type === "MANIFEST_REMOVE" || log.type === "ALLIANCE_BROKEN" ? (
                         <ArrowUpRight className="w-3 h-3 text-sc-red" />
                       ) : (
                         <ArrowDownLeft className="w-3 h-3 text-sc-green" />
                       )}
-                      <span className={`text-[9px] font-bold uppercase tracking-widest ${
-                        log.type === "WITHDRAWN" ? "text-sc-red" : "text-sc-green"
-                      }`}>
-                        {log.type}
+                      <span className={cn(
+                        "text-[9px] font-bold uppercase tracking-widest",
+                        (log.type === "WITHDRAWN" || log.type === "MANIFEST_REMOVE" || log.type === "ALLIANCE_BROKEN") ? "text-sc-red" : "text-sc-green"
+                      )}>
+                        {log.type.replace('_', ' ')}
                       </span>
                     </div>
                   </td>

@@ -239,12 +239,26 @@ export async function approveOrgRequest(requestId: string) {
       throw new Error(orgResult.error || "Provisioning failed.");
     }
 
-    // 2. Delete the request record now that it's active
-    await prisma.orgRequest.delete({
-      where: { id: requestId }
+    // 2. Update the request record status for history
+    await prisma.orgRequest.update({
+      where: { id: requestId },
+      data: { status: "APPROVED" }
+    });
+
+    // 3. Log the provisioning in the global manifest
+    await prisma.distributionLog.create({
+      data: {
+        orgId: orgResult.org?.id || "NEXUS",
+        itemName: `Organization Provisioned: ${request.name}`,
+        quantity: 1,
+        type: "ORG_PROVISIONED",
+        method: "NEXUS_APPROVAL",
+        performedBy: "GLOBAL_ROOT"
+      }
     });
 
     revalidatePath("/superadmin");
+    revalidatePath("/logs");
     
     return { 
       success: true, 
