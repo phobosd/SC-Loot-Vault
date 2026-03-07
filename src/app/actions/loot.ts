@@ -39,10 +39,19 @@ export async function addLootItems(items: {
     });
 
     // Log the addition
+    let logItemName = "";
+    if (validItems.length === 1) {
+      logItemName = `Asset Added: ${validItems[0].name}`;
+    } else {
+      const names = validItems.map(i => i.name);
+      const displayedNames = names.slice(0, 3).join(", ");
+      logItemName = `Manifest Expansion: ${validItems.length} items (${displayedNames}${names.length > 3 ? "..." : ""})`;
+    }
+
     await prisma.distributionLog.create({
       data: {
         orgId: user.role === "SUPERADMIN" ? validItems[0].orgId : user.orgId!,
-        itemName: `Manifest Expansion: ${validItems.length} types added`,
+        itemName: logItemName,
         quantity: validItems.reduce((acc, i) => acc + i.quantity, 0),
         type: "MANIFEST_ADD",
         method: "MANUAL_ENTRY",
@@ -75,7 +84,7 @@ export async function removeLootItems(itemIds: string[]) {
     // Log the removal
     await prisma.distributionLog.create({
       data: {
-        orgId: user.orgId || "NEXUS",
+        orgId: user.orgId || null,
         itemName: `Manifest Purge: ${itemIds.length} items removed`,
         quantity: itemIds.length,
         type: "MANIFEST_REMOVE",
@@ -162,8 +171,23 @@ export async function createLootRequest(data: {
         status: "PENDING"
       }
     });
+
+    // Log the request
+    await prisma.distributionLog.create({
+      data: {
+        orgId: data.orgId,
+        recipientId: data.userId,
+        itemName: `Asset Requested: ${data.itemName}`,
+        quantity: data.quantity,
+        type: "LOOT_REQUEST",
+        method: "USER_ACTION",
+        performedBy: user.username || "MEMBER"
+      }
+    });
+
     revalidatePath("/vault");
     revalidatePath("/dashboard");
+    revalidatePath("/logs");
     return { success: true, request };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -253,8 +277,23 @@ export async function rejectLootRequest(requestId: string, reason: string) {
         denialReason: reason
       }
     });
+
+    // Log the rejection
+    await prisma.distributionLog.create({
+      data: {
+        orgId: targetOrgId,
+        recipientId: request.userId,
+        itemName: `Asset Request Rejected: ${request.itemName}`,
+        quantity: request.quantity,
+        type: "LOOT_REJECTED",
+        method: "ADMIN_ACTION",
+        performedBy: admin.username || "ADMIN"
+      }
+    });
+
     revalidatePath("/dashboard");
     revalidatePath("/vault");
+    revalidatePath("/logs");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

@@ -89,16 +89,19 @@ export function LogTable({ initialLogs, isGlobalView }: LogTableProps) {
                   )}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      {log.type === "WITHDRAWN" || log.type === "MANIFEST_REMOVE" || log.type === "ALLIANCE_BROKEN" ? (
+                      {log.type.includes('REJECTED') || log.type.includes('BROKEN') || log.type.includes('DELETE') || log.type === "WITHDRAWN" || log.type === "MANIFEST_REMOVE" ? (
                         <ArrowUpRight className="w-3 h-3 text-sc-red" />
+                      ) : log.type.includes('REQUEST') || log.type.includes('SIGNUP') ? (
+                        <RotateCw className="w-3 h-3 text-sc-gold" />
                       ) : (
                         <ArrowDownLeft className="w-3 h-3 text-sc-green" />
                       )}
                       <span className={cn(
                         "text-[9px] font-bold uppercase tracking-widest",
-                        (log.type === "WITHDRAWN" || log.type === "MANIFEST_REMOVE" || log.type === "ALLIANCE_BROKEN") ? "text-sc-red" : "text-sc-green"
+                        (log.type.includes('REJECTED') || log.type.includes('BROKEN') || log.type.includes('DELETE') || log.type === "WITHDRAWN" || log.type === "MANIFEST_REMOVE") ? "text-sc-red" : 
+                        (log.type.includes('REQUEST') || log.type.includes('SIGNUP')) ? "text-sc-gold" : "text-sc-green"
                       )}>
-                        {log.type.replace('_', ' ')}
+                        {log.type.replace(/_/g, ' ')}
                       </span>
                     </div>
                   </td>

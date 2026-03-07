@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth-checks";
+import { requireAdmin, requireSuperAdmin } from "@/lib/auth-checks";
 
 export async function sendAllianceRequest(targetOrgId: string) {
   try {
@@ -68,19 +68,19 @@ export async function approveAllianceRequest(requestId: string) {
     }
 
     // Create mutual alliance entries
-    await prisma.$transaction([
-      prisma.alliance.create({
+    await prisma.$transaction(async (tx) => {
+      await tx.alliance.create({
         data: { orgId: request.senderOrgId, allyId: request.targetOrgId }
-      }),
-      prisma.alliance.create({
+      });
+      await tx.alliance.create({
         data: { orgId: request.targetOrgId, allyId: request.senderOrgId }
-      }),
-      prisma.allianceRequest.update({
+      });
+      await tx.allianceRequest.update({
         where: { id: requestId },
         data: { status: "APPROVED" }
-      }),
+      });
       // Log for sender
-      prisma.distributionLog.create({
+      await tx.distributionLog.create({
         data: {
           orgId: request.senderOrgId,
           itemName: `Diplomatic Link Established: ${request.target.name}`,
@@ -89,9 +89,9 @@ export async function approveAllianceRequest(requestId: string) {
           method: "DIPLOMATIC_HANDSHAKE",
           performedBy: "SYSTEM_APPROVAL"
         }
-      }),
+      });
       // Log for target
-      prisma.distributionLog.create({
+      await tx.distributionLog.create({
         data: {
           orgId: request.targetOrgId,
           itemName: `Diplomatic Link Established: ${request.sender.name}`,
@@ -100,8 +100,8 @@ export async function approveAllianceRequest(requestId: string) {
           method: "DIPLOMATIC_HANDSHAKE",
           performedBy: user.username || "ADMIN"
         }
-      })
-    ]);
+      });
+    });
 
     revalidatePath("/alliances");
     revalidatePath("/logs");
@@ -128,13 +128,13 @@ export async function rejectAllianceRequest(requestId: string) {
        throw new Error("Invalid request or unauthorized.");
     }
 
-    await prisma.$transaction([
-      prisma.allianceRequest.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.allianceRequest.update({
         where: { id: requestId },
         data: { status: "REJECTED" }
-      }),
+      });
       // Log for the org that rejected
-      prisma.distributionLog.create({
+      await tx.distributionLog.create({
         data: {
           orgId: request.targetOrgId,
           itemName: `Alliance Request Declined: ${request.sender.name}`,
@@ -143,9 +143,9 @@ export async function rejectAllianceRequest(requestId: string) {
           method: "DIPLOMATIC_REFUSAL",
           performedBy: user.username || "ADMIN"
         }
-      }),
+      });
       // Log for the org that was rejected
-      prisma.distributionLog.create({
+      await tx.distributionLog.create({
         data: {
           orgId: request.senderOrgId,
           itemName: `Alliance Request Declined by ${request.target.name}`,
@@ -154,8 +154,8 @@ export async function rejectAllianceRequest(requestId: string) {
           method: "DIPLOMATIC_REFUSAL",
           performedBy: "EXTERNAL_SYSTEM"
         }
-      })
-    ]);
+      });
+    });
 
     revalidatePath("/alliances");
     revalidatePath("/logs");
@@ -176,17 +176,17 @@ export async function breakAlliance(allyId: string) {
       prisma.org.findUnique({ where: { id: allyId }, select: { name: true } })
     ]);
 
-    await prisma.$transaction([
-      prisma.alliance.deleteMany({
+    await prisma.$transaction(async (tx) => {
+      await tx.alliance.deleteMany({
         where: {
           OR: [
             { orgId: user.orgId, allyId },
             { orgId: allyId, allyId: user.orgId }
           ]
         }
-      }),
+      });
       // Log for the org that initiated the break
-      prisma.distributionLog.create({
+      await tx.distributionLog.create({
         data: {
           orgId: user.orgId,
           itemName: `Diplomatic Termination: ${allyOrg?.name || "Unknown Org"}`,
@@ -195,9 +195,9 @@ export async function breakAlliance(allyId: string) {
           method: "DIPLOMATIC_TERMINATION",
           performedBy: user.username || "ADMIN"
         }
-      }),
+      });
       // Log for the other org so they know what happened
-      prisma.distributionLog.create({
+      await tx.distributionLog.create({
         data: {
           orgId: allyId,
           itemName: `Alliance Severed by ${myOrg?.name || "Unknown Org"}`,
@@ -206,10 +206,150 @@ export async function breakAlliance(allyId: string) {
           method: "DIPLOMATIC_TERMINATION",
           performedBy: "EXTERNAL_ACTION"
         }
-      })
-    ]);
+      });
+    });
     revalidatePath("/alliances");
     revalidatePath("/logs");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function adminCreateAlliance(org1Id: string, org2Id: string) {
+  try {
+    const admin = await requireSuperAdmin();
+
+    const [org1, org2] = await Promise.all([
+      prisma.org.findUnique({ where: { id: org1Id }, select: { name: true } }),
+      prisma.org.findUnique({ where: { id: org2Id }, select: { name: true } })
+    ]);
+
+    if (!org1 || !org2) throw new Error("Target organization not found.");
+    if (org1Id === org2Id) throw new Error("Cannot ally an organization with itself.");
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Clear any existing requests to prevent unique constraint conflicts
+      await tx.allianceRequest.deleteMany({
+        where: {
+          OR: [
+            { senderOrgId: org1Id, targetOrgId: org2Id },
+            { senderOrgId: org2Id, targetOrgId: org1Id }
+          ]
+        }
+      });
+      // 2. Establish bi-directional alliance
+      await tx.alliance.upsert({
+        where: { orgId_allyId: { orgId: org1Id, allyId: org2Id } },
+        update: {},
+        create: { orgId: org1Id, allyId: org2Id }
+      });
+      await tx.alliance.upsert({
+        where: { orgId_allyId: { orgId: org2Id, allyId: org1Id } },
+        update: {},
+        create: { orgId: org2Id, allyId: org1Id }
+      });
+      // 3. Log the override for both sides and system-wide
+      await tx.distributionLog.createMany({
+        data: [
+          {
+            orgId: org1Id,
+            itemName: `Diplomatic Link Established: ${org2.name}`,
+            quantity: 1,
+            type: "ALLIANCE_CREATED",
+            method: "ROOT_OVERRIDE",
+            performedBy: admin.username || "SUPERADMIN"
+          },
+          {
+            orgId: org2Id,
+            itemName: `Diplomatic Link Established: ${org1.name}`,
+            quantity: 1,
+            type: "ALLIANCE_CREATED",
+            method: "ROOT_OVERRIDE",
+            performedBy: admin.username || "SUPERADMIN"
+          },
+          {
+            orgId: null,
+            itemName: `Diplomatic Link Forced: ${org1.name} <-> ${org2.name}`,
+            quantity: 1,
+            type: "ALLIANCE_CREATED",
+            method: "ROOT_OVERRIDE",
+            performedBy: admin.username || "SUPERADMIN"
+          }
+        ]
+      });
+    });
+
+    revalidatePath("/alliances");
+    revalidatePath("/logs");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function adminDeleteAlliance(org1Id: string, org2Id: string) {
+  try {
+    const admin = await requireSuperAdmin();
+
+    const [org1, org2] = await Promise.all([
+      prisma.org.findUnique({ where: { id: org1Id }, select: { name: true } }),
+      prisma.org.findUnique({ where: { id: org2Id }, select: { name: true } })
+    ]);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.alliance.deleteMany({
+        where: {
+          OR: [
+            { orgId: org1Id, allyId: org2Id },
+            { orgId: org2Id, allyId: org1Id }
+          ]
+        }
+      });
+      // Also clear any corresponding approved requests
+      await tx.allianceRequest.deleteMany({
+        where: {
+          OR: [
+            { senderOrgId: org1Id, targetOrgId: org2Id },
+            { senderOrgId: org2Id, targetOrgId: org1Id }
+          ],
+          status: "APPROVED"
+        }
+      });
+      // Log for both sides and system-wide
+      await tx.distributionLog.createMany({
+        data: [
+          {
+            orgId: org1Id,
+            itemName: `Diplomatic Link Terminated: ${org2?.name || org2Id}`,
+            quantity: 1,
+            type: "ALLIANCE_BROKEN",
+            method: "ROOT_OVERRIDE",
+            performedBy: admin.username || "SUPERADMIN"
+          },
+          {
+            orgId: org2Id,
+            itemName: `Diplomatic Link Terminated: ${org1?.name || org1Id}`,
+            quantity: 1,
+            type: "ALLIANCE_BROKEN",
+            method: "ROOT_OVERRIDE",
+            performedBy: admin.username || "SUPERADMIN"
+          },
+          {
+            orgId: null,
+            itemName: `Diplomatic Link Terminated: ${org1?.name || org1Id} <-> ${org2?.name || org2Id}`,
+            quantity: 1,
+            type: "ALLIANCE_BROKEN",
+            method: "ROOT_OVERRIDE",
+            performedBy: admin.username || "SUPERADMIN"
+          }
+        ]
+      });
+    });
+
+    revalidatePath("/alliances");
+    revalidatePath("/logs");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };

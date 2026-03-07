@@ -173,7 +173,7 @@ model SCItemCache {
 
 model DistributionLog {
   id          String   @id @default(cuid())
-  orgId       String
+  orgId       String?
   recipientId String?
   itemName    String
   quantity    Int
@@ -181,8 +181,8 @@ model DistributionLog {
   method      String
   performedBy String?
   timestamp   DateTime @default(now())
-  org         Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  recipient   User?    @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  org         Org?     @relation(fields: [orgId], references: [id], onDelete: SetNull)
+  recipient   User?    @relation(fields: [recipientId], references: [id], onDelete: SetNull)
 }
 
 model LootRequest {

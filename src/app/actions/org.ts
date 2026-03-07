@@ -56,8 +56,31 @@ export async function provisionOrg(data: {
       }
     });
 
+    // Audit Log for Organization Provisioning (Global and Local)
+    await prisma.distributionLog.createMany({
+      data: [
+        {
+          orgId: org.id,
+          itemName: `Organization Node Activated: ${org.name}`,
+          quantity: 1,
+          type: "ORG_CREATED",
+          method: "ROOT_PROVISIONING",
+          performedBy: superAdmin.username || "SUPERADMIN"
+        },
+        {
+          orgId: null,
+          itemName: `New Organization Provisioned: ${org.name}`,
+          quantity: 1,
+          type: "ORG_CREATED",
+          method: "ROOT_PROVISIONING",
+          performedBy: superAdmin.username || "SUPERADMIN"
+        }
+      ]
+    });
+
     revalidatePath("/superadmin");
     revalidatePath("/users");
+    revalidatePath("/logs");
     
     return { 
       success: true, 
@@ -78,7 +101,7 @@ export async function updateOrg(orgId: string, data: {
 }) {
   try {
     await requireSuperAdmin();
-    await prisma.org.update({
+    const org = await prisma.org.update({
       where: { id: orgId },
       data: {
         name: data.name,
@@ -87,7 +110,30 @@ export async function updateOrg(orgId: string, data: {
         accentColor: data.accentColor,
       }
     });
+
+    await prisma.distributionLog.createMany({
+      data: [
+        {
+          orgId: null,
+          itemName: `Organization Parameters Updated: ${org.name}`,
+          quantity: 1,
+          type: "ORG_UPDATED",
+          method: "ADMIN_ACTION",
+          performedBy: superAdmin.username || "SUPERADMIN"
+        },
+        {
+          orgId: org.id,
+          itemName: `Organization Parameters Updated by Global Root`,
+          quantity: 1,
+          type: "ORG_UPDATED",
+          method: "ROOT_OVERRIDE",
+          performedBy: superAdmin.username || "SUPERADMIN"
+        }
+      ]
+    });
+
     revalidatePath("/superadmin");
+    revalidatePath("/logs");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -96,11 +142,25 @@ export async function updateOrg(orgId: string, data: {
 
 export async function deleteOrg(orgId: string) {
   try {
-    await requireSuperAdmin();
+    const superAdmin = await requireSuperAdmin();
+    const org = await prisma.org.findUnique({ where: { id: orgId } });
+
     await prisma.org.delete({
       where: { id: orgId }
     });
+
+    await prisma.distributionLog.create({
+      data: {
+        itemName: `Organization Decommissioned: ${org?.name || orgId}`,
+        quantity: 1,
+        type: "ORG_DELETED",
+        method: "ADMIN_ACTION",
+        performedBy: superAdmin.username || "SUPERADMIN"
+      }
+    });
+
     revalidatePath("/superadmin");
+    revalidatePath("/logs");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -124,7 +184,20 @@ export async function updateOrgDiscord(orgId: string, data: {
         discordGuildId: data.discordGuildId,
       }
     });
+
+    await prisma.distributionLog.create({
+      data: {
+        orgId: orgId,
+        itemName: `Discord Bot Configuration Updated`,
+        quantity: 1,
+        type: "ORG_CONFIG_CHANGE",
+        method: "ADMIN_ACTION",
+        performedBy: user.username || "ADMIN"
+      }
+    });
+
     revalidatePath("/discord");
+    revalidatePath("/logs");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -176,6 +249,17 @@ export async function updateOrgSettings(orgId: string, data: {
         }
       })
     ]);
+
+    await prisma.distributionLog.create({
+      data: {
+        orgId: orgId,
+        itemName: `Whitelabel HUD Parameters Updated`,
+        quantity: 1,
+        type: "ORG_CONFIG_CHANGE",
+        method: "ADMIN_ACTION",
+        performedBy: user.username || "ADMIN"
+      }
+    });
     
     revalidatePath("/settings");
     revalidatePath("/dashboard");
@@ -208,7 +292,20 @@ export async function submitOrgRequest(data: {
         status: "PENDING"
       }
     });
+
+    // Global Log for Org Request
+    await prisma.distributionLog.create({
+      data: {
+        itemName: `Nexus Integration Requested: ${data.name}`,
+        quantity: 1,
+        type: "ORG_REQUEST",
+        method: "PUBLIC_SIGNUP",
+        performedBy: "SYSTEM"
+      }
+    });
+
     revalidatePath("/superadmin");
+    revalidatePath("/logs");
     return { success: true, request };
   } catch (error: any) {
     if (error.code === 'P2002') return { success: false, error: "Slug or Name already in use." };
@@ -248,12 +345,11 @@ export async function approveOrgRequest(requestId: string) {
     // 3. Log the provisioning in the global manifest
     await prisma.distributionLog.create({
       data: {
-        orgId: orgResult.org?.id || "NEXUS",
-        itemName: `Organization Provisioned: ${request.name}`,
+        itemName: `Integration Approved: ${request.name}`,
         quantity: 1,
-        type: "ORG_PROVISIONED",
-        method: "NEXUS_APPROVAL",
-        performedBy: "GLOBAL_ROOT"
+        type: "ORG_APPROVED",
+        method: "NEXUS_ACTION",
+        performedBy: superAdmin.username || "SUPERADMIN"
       }
     });
 
@@ -271,12 +367,26 @@ export async function approveOrgRequest(requestId: string) {
 
 export async function rejectOrgRequest(requestId: string) {
   try {
-    await requireSuperAdmin();
+    const superAdmin = await requireSuperAdmin();
+    const request = await prisma.orgRequest.findUnique({ where: { id: requestId } });
+
     await prisma.orgRequest.update({
       where: { id: requestId },
       data: { status: "REJECTED" }
     });
+
+    await prisma.distributionLog.create({
+      data: {
+        itemName: `Integration Rejected: ${request?.name || requestId}`,
+        quantity: 1,
+        type: "ORG_REJECTED",
+        method: "NEXUS_ACTION",
+        performedBy: superAdmin.username || "SUPERADMIN"
+      }
+    });
+
     revalidatePath("/superadmin");
+    revalidatePath("/logs");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

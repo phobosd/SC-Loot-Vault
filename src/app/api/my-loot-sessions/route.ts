@@ -12,7 +12,7 @@ export async function GET() {
 
   const sessions = await prisma.lootSession.findMany({
     where: { 
-      orgId: session.user.orgId,
+      ...(session.user.orgId ? { orgId: session.user.orgId } : {}),
       status: "ACTIVE",
       participants: {
         some: {

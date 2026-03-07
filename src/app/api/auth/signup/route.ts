@@ -35,6 +35,19 @@ export async function POST(req: Request) {
       }
     });
 
+    // Audit Log for User Signup Request
+    await prisma.distributionLog.create({
+      data: {
+        orgId: validatedData.orgId,
+        recipientId: user.id,
+        itemName: `Enrollment Requested: ${user.name || user.username}`,
+        quantity: 1,
+        type: "USER_SIGNUP",
+        method: "PUBLIC_ENROLLMENT",
+        performedBy: "SYSTEM"
+      }
+    });
+
     revalidatePath("/users");
     revalidatePath("/dashboard");
 

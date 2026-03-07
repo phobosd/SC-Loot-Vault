@@ -17,10 +17,55 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AllianceManagerUI } from "@/components/alliances/alliance-manager-ui";
+import { SuperAdminAllianceManagerUI } from "@/components/superadmin/superadmin-alliance-manager-ui";
 
 export default async function AlliancesPage() {
   const session: any = await getServerSession(authOptions);
-  if (!session?.user?.orgId) redirect("/dashboard");
+  if (!session?.user) redirect("/login");
+
+  const isGlobalAdmin = session.user.role === 'SUPERADMIN' && !session.user.orgId;
+
+  if (isGlobalAdmin) {
+    const [orgs, alliances] = await Promise.all([
+      prisma.org.findMany({ orderBy: { name: 'asc' } }),
+      prisma.alliance.findMany({
+        include: {
+          org: { select: { id: true, name: true } },
+          ally: { select: { id: true, name: true } }
+        }
+      })
+    ]);
+
+    // De-duplicate alliances for display (since they are stored bi-directionally)
+    const seen = new Set();
+    const uniqueAlliances = alliances.filter(a => {
+      const pair = [a.orgId, a.allyId].sort().join('-');
+      if (seen.has(pair)) return false;
+      seen.add(pair);
+      return true;
+    });
+
+    return (
+      <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-700">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-white uppercase flex items-center gap-3">
+              <ShieldAlert className="w-8 h-8 text-sc-red" />
+              Global Alliance Command
+            </h1>
+            <p className="text-xs text-sc-red/60 mt-1 font-mono tracking-widest uppercase">
+              Network-Wide Diplomatic Registry // GLOBAL ROOT
+            </p>
+          </div>
+        </div>
+
+        <SuperAdminAllianceManagerUI 
+          orgs={orgs} 
+          alliances={uniqueAlliances}
+        />
+      </div>
+    );
+  }
 
   const org = await prisma.org.findUnique({
     where: { id: session.user.orgId },

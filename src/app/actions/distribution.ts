@@ -173,8 +173,21 @@ export async function createLootSession(data: {
       }
     });
 
+    // Log the session creation
+    await prisma.distributionLog.create({
+      data: {
+        orgId: data.orgId,
+        itemName: `Dispatch Session Initialized: ${data.title}`,
+        quantity: data.participantIds.length,
+        type: "DISPATCH_START",
+        method: "ADMIN_ACTION",
+        performedBy: (await requireAdmin()).username || "ADMIN"
+      }
+    });
+
     revalidatePath("/dashboard");
     revalidatePath("/distributions");
+    revalidatePath("/logs");
     return { success: true, sessionId: session.id };
   } catch (error: any) {
     return { success: false, error: error.message };
