@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createUserSchema } from "@/lib/validations";
+import { revalidatePath } from "next/cache";
 
 export async function POST(req: Request) {
   try {
@@ -33,6 +34,9 @@ export async function POST(req: Request) {
         status: "PENDING"
       }
     });
+
+    revalidatePath("/users");
+    revalidatePath("/dashboard");
 
     return NextResponse.json({ success: true, userId: user.id });
   } catch (error: any) {

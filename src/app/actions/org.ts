@@ -3,15 +3,22 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperAdmin } from "@/lib/auth-checks";
+import bcrypt from "bcryptjs";
 
 export async function provisionOrg(data: {
   name: string;
   slug: string;
+  requesterName: string;
+  adminPassword?: string; // Expects hashed password if coming from approveOrgRequest, or raw if from direct provision
+  contactInfo: string;
+  isPasswordHashed?: boolean;
   primaryColor?: string;
   accentColor?: string;
 }) {
   try {
     await requireSuperAdmin();
+    
+    // 1. Create the Org
     const org = await prisma.org.create({
       data: {
         name: data.name,
@@ -26,8 +33,37 @@ export async function provisionOrg(data: {
         }
       }
     });
+
+    // 2. Create the initial ADMIN user for this Org
+    const initialUsername = data.requesterName.replace(/\s+/g, '').toUpperCase();
+    
+    let finalHashedPassword;
+    if (data.isPasswordHashed && data.adminPassword) {
+      finalHashedPassword = data.adminPassword;
+    } else {
+      finalHashedPassword = await bcrypt.hash(data.adminPassword || "welcome123", 10);
+    }
+
+    await prisma.user.create({
+      data: {
+        username: initialUsername,
+        password: finalHashedPassword,
+        name: data.requesterName,
+        email: data.contactInfo.includes('@') ? data.contactInfo : null,
+        role: "ADMIN",
+        orgId: org.id,
+        status: "APPROVED"
+      }
+    });
+
     revalidatePath("/superadmin");
-    return { success: true, org };
+    revalidatePath("/users");
+    
+    return { 
+      success: true, 
+      org,
+      message: `Organization ${org.name} provisioned. Admin Account "${initialUsername}" is active.`
+    };
   } catch (error: any) {
     if (error.code === 'P2002') return { success: false, error: "Slug or Name already in use." };
     return { success: false, error: error.message };
@@ -154,16 +190,25 @@ export async function submitOrgRequest(data: {
   name: string;
   slug: string;
   requesterName: string;
+  adminPassword?: string;
   contactInfo: string;
 }) {
   try {
+    const hashedPassword = data.adminPassword ? await bcrypt.hash(data.adminPassword, 10) : null;
+
     // This is public, no auth check needed
     const request = await prisma.orgRequest.create({
       data: {
-        ...data,
+        name: data.name,
+        slug: data.slug,
+        requesterName: data.requesterName,
+        adminUsername: data.requesterName.replace(/\s+/g, '').toUpperCase(),
+        adminPassword: hashedPassword,
+        contactInfo: data.contactInfo,
         status: "PENDING"
       }
     });
+    revalidatePath("/superadmin");
     return { success: true, request };
   } catch (error: any) {
     if (error.code === 'P2002') return { success: false, error: "Slug or Name already in use." };
@@ -180,20 +225,31 @@ export async function approveOrgRequest(requestId: string) {
 
     if (!request) throw new Error("Request not found");
 
-    // Create the Org
-    await provisionOrg({
+    // 1. Provision the Org and its Admin
+    const orgResult = await provisionOrg({
       name: request.name,
       slug: request.slug,
+      requesterName: request.requesterName,
+      adminPassword: request.adminPassword || undefined,
+      contactInfo: request.contactInfo,
+      isPasswordHashed: true // The password in OrgRequest is already hashed
     });
 
-    // Update request status
-    await prisma.orgRequest.update({
-      where: { id: requestId },
-      data: { status: "APPROVED" }
+    if (!orgResult.success) {
+      throw new Error(orgResult.error || "Provisioning failed.");
+    }
+
+    // 2. Delete the request record now that it's active
+    await prisma.orgRequest.delete({
+      where: { id: requestId }
     });
 
     revalidatePath("/superadmin");
-    return { success: true };
+    
+    return { 
+      success: true, 
+      message: orgResult.message 
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

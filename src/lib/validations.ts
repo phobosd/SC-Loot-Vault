@@ -25,6 +25,9 @@ export const updateUserSchema = z.object({
 export const provisionOrgSchema = z.object({
   name: z.string().min(2).max(50),
   slug: z.string().min(2).max(30).regex(/^[a-z0-9-]+$/),
+  requesterName: z.string().min(2).max(50),
+  adminPassword: z.string().min(8).max(100).optional().nullable(),
+  contactInfo: z.string().min(2).max(100),
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
   accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
 });

@@ -111,6 +111,7 @@ export async function updateUser(userId: string, data: {
       data: updateData,
     });
     revalidatePath("/users");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

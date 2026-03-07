@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { LogTable } from "@/components/logs/log-table";
 import { getServerSession } from "next-auth";

@@ -25,7 +25,10 @@ export function OrgRequestManager({ requests }: OrgRequestManagerProps) {
   const handleApprove = async (id: string) => {
     setLoadingId(id);
     try {
-      await approveOrgRequest(id);
+      const result = await approveOrgRequest(id);
+      if (result.success && result.message) {
+        alert(result.message);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -71,9 +74,16 @@ export function OrgRequestManager({ requests }: OrgRequestManagerProps) {
 
             <div className="grid grid-cols-2 gap-4 border-y border-white/5 py-4">
               <div className="space-y-1">
-                <p className="text-[8px] text-gray-600 uppercase font-mono tracking-widest">Requester</p>
-                <div className="flex items-center gap-2 text-[10px] text-gray-300">
-                  <UserIcon className="w-3 h-3 text-sc-blue/40" /> {req.requesterName}
+                <p className="text-[8px] text-gray-600 uppercase font-mono tracking-widest">Requester / Admin</p>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2 text-[10px] text-gray-300">
+                    <UserIcon className="w-3 h-3 text-sc-blue/40" /> {req.requesterName}
+                  </div>
+                  {req.adminUsername && (
+                    <div className="text-[9px] text-sc-blue/60 font-mono uppercase pl-5">
+                      Designation: {req.adminUsername}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="space-y-1">

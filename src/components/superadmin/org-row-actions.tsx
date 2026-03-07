@@ -85,9 +85,12 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
     if (!confirm(`CRITICAL: You are about to decommission the entire ${org.name} organization. All manifest data, operators, and history will be purged. Proceed?`)) return;
     setLoading(true);
     try {
-      await deleteOrg(org.id);
-    } catch (err) {
-      console.error(err);
+      const res = await deleteOrg(org.id);
+      if (!res.success) {
+        alert("Decommission Failed: " + res.error);
+      }
+    } catch (err: any) {
+      alert("Nexus Protocol Error: " + err.message);
     } finally {
       setLoading(false);
     }

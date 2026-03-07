@@ -43,14 +43,20 @@ export function Sidebar() {
   const pathname = usePathname();
   const { data: session, update }: any = useSession();
   const [org, setOrg] = useState<any>(null);
+  const [counts, setCounts] = useState({
+    pendingOrgRequests: 0,
+    pendingUserRequests: 0,
+    pendingAllianceRequests: 0
+  });
 
   const user = session?.user;
 
   useEffect(() => {
     if (session?.user) {
       axios.get("/api/orgs/me").then(res => setOrg(res.data)).catch(() => {});
+      axios.get("/api/notifications").then(res => setCounts(res.data)).catch(() => {});
     }
-  }, [session]);
+  }, [session, pathname]); // Re-fetch on path change to clear badges if needed
 
   const handleStopImpersonating = async () => {
     await update({ stopImpersonating: true });
@@ -107,7 +113,12 @@ export function Sidebar() {
           if (item.role && !item.role.includes(user?.role)) return null;
 
           const isActive = pathname === item.href;
-          const pendingCount = item.name === "Alliance Network" ? org?._count?.receivedAllianceRequests : 0;
+          
+          // Badge Logic
+          let pendingCount = 0;
+          if (item.name === "Alliance Network") pendingCount = counts.pendingAllianceRequests;
+          if (item.name === "Personnel") pendingCount = counts.pendingUserRequests;
+          if (item.name === "Galactic Nexus") pendingCount = counts.pendingOrgRequests;
 
           return (
             <Link
@@ -126,7 +137,10 @@ export function Sidebar() {
               </div>
               <div className="flex items-center gap-2">
                 {pendingCount > 0 && (
-                  <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-sc-gold px-1 text-[10px] font-black text-black animate-pulse shadow-[0_0_10px_rgba(224,177,48,0.5)]">
+                  <span className={cn(
+                    "flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-black text-black animate-pulse",
+                    item.name === "Galactic Nexus" || item.name === "Personnel" ? "bg-sc-gold shadow-[0_0_10px_rgba(224,177,48,0.5)]" : "bg-sc-gold shadow-[0_0_10px_rgba(224,177,48,0.5)]"
+                  )}>
                     {pendingCount}
                   </span>
                 )}

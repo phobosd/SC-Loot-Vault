@@ -17,6 +17,7 @@ export async function GET(request: Request) {
   }
 
   try {
+    console.log("[SEARCH DEBUG] Querying for:", query);
     const items = await prisma.sCItemCache.findMany({
       where: {
         name: {
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
         name: 'asc'
       }
     });
+    console.log("[SEARCH DEBUG] Found items:", items.length);
 
     return NextResponse.json(items);
   } catch (error) {

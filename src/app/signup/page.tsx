@@ -37,8 +37,8 @@ export default function UnifiedSignupPage() {
 
   // Org State
   const [orgName, setOrgName] = useState("");
-  const [orgSlug, setOrgSlug] = useState("");
   const [requester, setRequester] = useState("");
+  const [orgAdminPassword, setOrgAdminPassword] = useState("");
   const [contact, setContact] = useState("");
 
   useEffect(() => {
@@ -76,10 +76,14 @@ export default function UnifiedSignupPage() {
     setLoading(true);
     setError("");
     try {
+      // Auto-generate slug from orgName
+      const generatedSlug = orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      
       const res = await submitOrgRequest({
         name: orgName,
-        slug: orgSlug,
+        slug: generatedSlug,
         requesterName: requester,
+        adminPassword: orgAdminPassword,
         contactInfo: contact
       });
       if (res.success) {
@@ -226,29 +230,15 @@ export default function UnifiedSignupPage() {
             </form>
           ) : (
             <form onSubmit={handleOrgRequest} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Org Designation</label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sc-gold/40" />
-                    <input 
-                      type="text" required value={orgName} onChange={(e) => setOrgName(e.target.value)}
-                      placeholder="E.G. AEGIS DYNAMICS" 
-                      className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-sc-gold/50"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Network Slug</label>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="text" required value={orgSlug} 
-                      onChange={(e) => setOrgSlug(e.target.value.replace(/\s+/g, '-').toLowerCase())}
-                      placeholder="aegis-node" 
-                      className="flex-1 bg-black/60 border border-white/10 px-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-sc-gold/50"
-                    />
-                    <span className="text-[10px] text-gray-600 font-mono">.VAULT</span>
-                  </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Org Designation</label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sc-gold/40" />
+                  <input 
+                    type="text" required value={orgName} onChange={(e) => setOrgName(e.target.value)}
+                    placeholder="E.G. AEGIS DYNAMICS" 
+                    className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-sc-gold/50"
+                  />
                 </div>
               </div>
 
@@ -264,6 +254,20 @@ export default function UnifiedSignupPage() {
                     />
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Lead Admin Security Key</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sc-gold/40" />
+                    <input 
+                      type="password" required value={orgAdminPassword} onChange={(e) => setOrgAdminPassword(e.target.value)}
+                      placeholder="••••••••" 
+                      className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-sc-gold/50"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
                 <div className="space-y-2">
                   <label className="text-[10px] font-mono text-sc-gold/80 uppercase tracking-widest">Comm-Link / Contact</label>
                   <div className="relative">

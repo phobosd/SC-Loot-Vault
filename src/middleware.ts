@@ -8,20 +8,26 @@ export default withAuth(
 
     // Unauthenticated handling
     if (!token) {
-      if (path.startsWith("/api") && !path.startsWith("/api/auth")) {
+      const isPublicApi = path.startsWith("/api/auth") || (path === "/api/orgs" && req.nextUrl.searchParams.get("signup") === "true");
+      
+      if (path.startsWith("/api") && !isPublicApi) {
         return new NextResponse(
           JSON.stringify({ error: "Unauthorized" }),
           { status: 401, headers: { 'content-type': 'application/json' } }
         );
       } else if (!path.startsWith("/api")) {
-         return NextResponse.redirect(new URL("/login", req.url));
+         const url = req.nextUrl.clone();
+         url.pathname = "/login";
+         return NextResponse.redirect(url);
       }
     }
 
     // Admin-only UI routes
     if (path.startsWith("/users") || path.startsWith("/settings")) {
       if (token?.role !== "ADMIN" && token?.role !== "SUPERADMIN") {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+        const url = req.nextUrl.clone();
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
       }
     }
   },

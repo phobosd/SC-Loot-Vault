@@ -7,7 +7,10 @@ import {
   Loader2, 
   Check, 
   Globe,
-  Palette
+  Palette,
+  User as UserIcon,
+  Lock,
+  Mail
 } from "lucide-react";
 import { provisionOrg } from "@/app/actions/org";
 import { cn } from "@/lib/utils";
@@ -15,7 +18,9 @@ import { cn } from "@/lib/utils";
 export function ProvisionOrgDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
+  const [requesterName, setRequesterName] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [contactInfo, setContactInfo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -25,11 +30,21 @@ export function ProvisionOrgDialog() {
     setError("");
     
     try {
-      const result = await provisionOrg({ name, slug });
+      const generatedSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const result = await provisionOrg({ 
+        name, 
+        slug: generatedSlug,
+        requesterName,
+        adminPassword,
+        contactInfo
+      });
       if (result.success) {
+        if (result.message) alert(result.message);
         setIsOpen(false);
         setName("");
-        setSlug("");
+        setRequesterName("");
+        setAdminPassword("");
+        setContactInfo("");
       } else {
         setError(result.error || "Provisioning failed");
       }
@@ -68,11 +83,11 @@ export function ProvisionOrgDialog() {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto custom-scrollbar">
           {error && <div className="p-3 bg-sc-red/10 border border-sc-red/30 text-sc-red text-[10px] font-mono uppercase">{error}</div>}
 
           <div className="space-y-2">
-            <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Org Designation</label>
+            <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Org Designation (ORG NAME)</label>
             <input 
               type="text" 
               required
@@ -83,18 +98,41 @@ export function ProvisionOrgDialog() {
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Network Slug (Subdomain)</label>
-            <div className="flex items-center gap-2">
-              <input 
-                type="text" 
-                required
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.replace(/\s+/g, '-').toLowerCase())}
-                placeholder="aegis-nexus" 
-                className="flex-1 bg-black/60 border border-white/10 px-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-blue/50"
-              />
-              <span className="text-[10px] text-gray-600 font-mono">.vault.net</span>
+          <div className="space-y-4 pt-2 border-t border-white/5">
+            <div className="space-y-2">
+              <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Lead Admin Designation</label>
+              <div className="relative">
+                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input 
+                  type="text" required value={requesterName} onChange={(e) => setRequesterName(e.target.value)}
+                  placeholder="USERNAME" 
+                  className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-blue/50"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Lead Admin Security Key</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input 
+                  type="password" required value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="••••••••" 
+                  className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-blue/50"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-mono text-sc-blue/80 uppercase tracking-widest">Comm-Link / Contact</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input 
+                  type="text" required value={contactInfo} onChange={(e) => setContactInfo(e.target.value)}
+                  placeholder="EMAIL OR DISCORD" 
+                  className="w-full bg-black/60 border border-white/10 pl-10 pr-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-sc-blue/50"
+                />
+              </div>
             </div>
           </div>
 
