@@ -29,9 +29,16 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
   let org = null;
   let isAlliedView = false;
 
-  // Fetch alliances for the selector
+  // Fetch data for selector
   let alliances: any[] = [];
-  if (session.user.orgId) {
+  let allOrgs: any[] = [];
+
+  if (isGlobalAdmin) {
+    allOrgs = await prisma.org.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' }
+    });
+  } else if (session.user.orgId) {
     alliances = await prisma.alliance.findMany({
       where: { orgId: session.user.orgId },
       include: { ally: { select: { id: true, name: true } } }
@@ -39,47 +46,40 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
   }
 
   if (allyId) {
-    isAlliedView = allyId !== session.user.orgId;
-    
-    // If browsing an ally, verify alliance exists or user is Global Admin
-    if (isGlobalAdmin) {
-      org = await prisma.org.findUnique({ where: { id: allyId } });
-    } else {
-      const alliance = await prisma.alliance.findFirst({
-        where: {
-          orgId: session.user.orgId || "NONE",
-          allyId: allyId
-        },
-        include: { ally: true }
-      });
-      if (alliance) {
-        org = alliance.ally;
-      }
-    }
+    isAlliedView = !isGlobalAdmin && allyId !== session.user.orgId;
+    org = await prisma.org.findUnique({ where: { id: allyId } });
   } else {
     org = session.user.orgId 
       ? await prisma.org.findUnique({ where: { id: session.user.orgId } })
       : null;
   }
 
-  // If Global Admin (no org and not browsing an ally), show empty state per user preference
+  // If Global Admin (no org and not browsing an ally), show selector UI
   if (isGlobalAdmin && !org && !allyId) {
     return (
       <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white uppercase flex items-center gap-3">
-            <span className="w-2 h-8 bg-sc-blue block shadow-[0_0_10px_rgba(0,209,255,0.5)]" />
-            Nexus Asset Vault
-          </h1>
-          <p className="text-xs text-sc-blue/60 mt-1 font-mono tracking-widest uppercase">
-            Global Admin Mode // Awaiting Impersonation Protocol
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-white uppercase flex items-center gap-3">
+              <span className="w-2 h-8 bg-sc-blue block shadow-[0_0_10px_rgba(0,209,255,0.5)]" />
+              Nexus Asset Oversight
+            </h1>
+            <p className="text-xs text-sc-blue/60 mt-1 font-mono tracking-widest uppercase">
+              Global Admin Mode // Select Node to Monitor
+            </p>
+          </div>
+          <VaultOrgSelector 
+            currentOrgId="" 
+            userOrgId=""
+            alliances={allOrgs}
+            isGlobalAdmin={true}
+          />
         </div>
         <div className="sc-glass p-20 flex flex-col items-center justify-center border-dashed border-sc-blue/20 rounded-lg text-center">
           <Database className="w-16 h-16 text-sc-blue/20 mb-6" />
-          <h3 className="text-lg font-bold text-white uppercase tracking-widest mb-2">No Active Org Context</h3>
-          <p className="text-xs text-gray-500 font-mono uppercase max-w-md leading-relaxed">
-            Local organization loot is isolated. To manage or view a specific vault, initialize the Impersonation Protocol from the Galactic Nexus command.
+          <h3 className="text-lg font-bold text-white uppercase tracking-widest mb-2">Awaiting Node Selection</h3>
+          <p className="text-[10px] text-gray-500 font-mono uppercase max-w-md leading-relaxed">
+            Select an organization from the Nexus Link above to view and manage its specific asset manifest.
           </p>
         </div>
       </div>
@@ -106,19 +106,20 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
                 "w-2 h-8 block",
                 isAlliedView ? "bg-sc-gold shadow-[0_0_10px_rgba(224,177,48,0.5)]" : "bg-sc-blue shadow-[0_0_10px_rgba(0,209,255,0.5)]"
               )} />
-              {isAlliedView ? `Allied Vault: ${org.name}` : (isGlobalAdmin ? `Nexus Vault: ${org.name}` : "Org Loot Vault")}
+              {isAlliedView ? `Allied Vault: ${org.name}` : (isGlobalAdmin ? `Nexus Oversight: ${org.name}` : "Org Loot Vault")}
             </h1>
             <p className="text-xs text-sc-blue/60 mt-1 font-mono tracking-widest uppercase flex items-center gap-2">
               {isAlliedView && <Handshake className="w-3 h-3 text-sc-gold" />}
-              {isAlliedView ? "BROWSING EXTERNAL INVENTORY // DIP-LINK ACTIVE" : `Current Inventory Status // ${org.name}`}
+              {isAlliedView ? "BROWSING EXTERNAL INVENTORY // DIP-LINK ACTIVE" : (isGlobalAdmin ? `MONITORING NODE // ${org.name}` : `Current Inventory Status // ${org.name}`)}
             </p>
           </div>
 
-          {alliances.length > 0 && (
+          {(alliances.length > 0 || isGlobalAdmin) && (
             <VaultOrgSelector 
               currentOrgId={org.id} 
-              userOrgId={session.user.orgId}
-              alliances={alliances.map((a: any) => a.ally)} 
+              userOrgId={session.user.orgId || ""}
+              alliances={isGlobalAdmin ? allOrgs : alliances.map((a: any) => a.ally)} 
+              isGlobalAdmin={isGlobalAdmin}
             />
           )}
         </div>
