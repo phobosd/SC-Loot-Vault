@@ -15,8 +15,10 @@ This document provides the essential operational context, architectural blueprin
 - **Shared Types:** Centralized in `src/lib/types.ts`. Use these interfaces instead of `any` or inline definitions for domain models.
 - **State Management:** 
     - **Server:** Server Actions (`src/app/actions/*`) for all mutations.
-    - **Client:** React Hooks (`useState`, `useMemo`) + **Smart Polling** (2s - 15s interval) for real-time HUD elements.
+    - **Real-Time:** **Server-Sent Events (SSE)** via `src/app/api/events/[id]/route.ts`. Use the `eventEmitter` in `src/lib/events.ts` to trigger updates.
+    - **Client:** React Hooks (`useState`, `useMemo`) + **Hybrid Polling/SSE**. HUDs listen to SSE for instant updates and use Smart Polling (2s - 15s) as a reliable fallback.
 - **Validation:** [Zod](https://zod.dev/) schemas in `src/lib/validations.ts` MUST be used to parse all incoming action data.
+- **Search Engine:** **PostgreSQL Fuzzy Search** enabled via `pg_trgm` and `fuzzystrmatch`. Use `prisma.$queryRaw` with trigram similarity for typo-tolerant queries.
 
 ---
 
@@ -24,10 +26,14 @@ This document provides the essential operational context, architectural blueprin
 
 ### **A. Synchronized Real-Time Dispatch (Loot Sessions)**
 - **Mechanic:** RNG-based distribution using "Reel" or "Wheel" animations.
-- **Synchronicity:** Achievements are synchronized via `animationState` (JSON) in the `LootSession` model.
+- **Synchronicity:** Achievements are synchronized via **SSE events** and `animationState` (JSON) in the `LootSession` model.
 - **Deterministic RNG:** Uses `seededRandom(seed)` from `src/lib/utils.ts`.
-- **Modularity:** Dispatch UI is decomposed into `MasterRNGWheel`, `SessionManifest`, `WinnerHUD`, and `CommandControls` in `src/components/distributions`.
-- **Smart Polling:** HUDs dynamically throttle background polling (e.g., from 2s to 10s+) when the browser tab is hidden using the `visibilitychange` event listener.
+- **Modularity:** Dispatch UI is decomposed into `MasterRNGWheel`, `SessionManifest`, `WinnerHUD`, and `CommandControls`.
+
+### **B. Advanced Search & Matching**
+- **Fuzzy Search:** Implemented in `sc-items/search` and `org-inventory` APIs. Uses trigram similarity to handle typos.
+- **Discord Search:** The bot uses the same fuzzy matching logic for `/loot-search` and `/request-asset`.
+- **Manifest Enrichment:** The Google Sheet import protocol (`addLootItems`) automatically attempts to fuzzy-match new items against the `SCItemCache` to fill in missing metadata (category, manufacturer).
 
 ### **B. Discord Integration (Manifest Bridge)**
 - **Bot Location:** `scripts/run-bot.ts`.

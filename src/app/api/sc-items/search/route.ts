@@ -18,19 +18,17 @@ export async function GET(request: Request) {
 
   try {
     console.log("[SEARCH DEBUG] Querying for:", query);
-    const items = await prisma.sCItemCache.findMany({
-      where: {
-        name: {
-          contains: query,
-          mode: 'insensitive',
-        },
-      },
-      take: 10,
-      orderBy: {
-        name: 'asc'
-      }
-    });
-    console.log("[SEARCH DEBUG] Found items:", items.length);
+    
+    // Use trigram similarity for fuzzy matching
+    const items = await prisma.$queryRaw`
+      SELECT *, similarity(name, ${query}) as score
+      FROM "SCItemCache"
+      WHERE name % ${query} OR name ILIKE ${'%' + query + '%'}
+      ORDER BY score DESC, name ASC
+      LIMIT 10
+    `;
+    
+    console.log("[SEARCH DEBUG] Found items:", (items as any[]).length);
 
     return NextResponse.json(items);
   } catch (error) {

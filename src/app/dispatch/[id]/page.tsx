@@ -101,6 +101,25 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     fetchSession();
     
+    // SSE Listener for real-time achievement synchronization
+    const eventSource = new EventSource(`/api/events/${id}`);
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("[SSE DEBUG] Event Received:", data);
+        // Force a session fetch on any relevant update
+        fetchSession();
+      } catch (err) {
+        console.error("SSE parse error:", err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("SSE Connection Error:", err);
+      eventSource.close();
+    };
+
     let intervalId: NodeJS.Timeout;
     const startPolling = (ms: number) => {
       if (intervalId) clearInterval(intervalId);
@@ -124,6 +143,7 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       clearInterval(intervalId);
+      eventSource.close();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [id, localStatus]);

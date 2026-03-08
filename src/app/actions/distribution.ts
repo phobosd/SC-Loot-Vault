@@ -12,6 +12,7 @@ import {
   resetGlobalSessionSchema,
   archiveGlobalSessionSchema
 } from "@/lib/validations";
+import { eventEmitter, EVENTS } from "@/lib/events";
 
 export async function assignItemToOperator(data: {
   orgId: string;
@@ -238,6 +239,7 @@ export async function startGlobalSpin(sessionId: string) {
     });
 
     revalidatePath(`/dispatch/${validated.sessionId}`);
+    eventEmitter.emit(EVENTS.LOOT_SESSION_UPDATED(validated.sessionId), { type: "SPIN_STARTED" });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -310,6 +312,7 @@ export async function finalizeGlobalSession(sessionId: string) {
     revalidatePath("/assigned");
     revalidatePath("/logs");
     revalidatePath(`/dispatch/${validated.sessionId}`);
+    eventEmitter.emit(EVENTS.LOOT_SESSION_UPDATED(validated.sessionId), { type: "SESSION_FINALIZED" });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -329,6 +332,7 @@ export async function resetGlobalSession(sessionId: string) {
       }
     });
     revalidatePath(`/dispatch/${validated.sessionId}`);
+    eventEmitter.emit(EVENTS.LOOT_SESSION_UPDATED(validated.sessionId), { type: "SESSION_RESET" });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -345,6 +349,7 @@ export async function archiveGlobalSession(sessionId: string) {
     });
     revalidatePath("/distributions");
     revalidatePath(`/dispatch/${validated.sessionId}`);
+    eventEmitter.emit(EVENTS.LOOT_SESSION_UPDATED(validated.sessionId), { type: "SESSION_ARCHIVED" });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

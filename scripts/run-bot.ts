@@ -175,10 +175,16 @@ async function startBot() {
 
     if (commandName === 'loot-search') {
       const query = interaction.options.getString('query') || "";
-      const items = await prisma.lootItem.findMany({
-        where: { orgId: org.id, name: { contains: query } },
-        take: 5
-      });
+      
+      // Use trigram similarity for fuzzy matching in Discord
+      const items: any[] = await prisma.$queryRaw`
+        SELECT *, similarity(name, ${query}) as score
+        FROM "LootItem"
+        WHERE "orgId" = ${org.id} AND (name % ${query} OR name ILIKE ${'%' + query + '%'})
+        ORDER BY score DESC
+        LIMIT 5
+      `;
+
       if (items.length === 0) return interaction.reply({ content: `❌ No assets found matching criteria: **${query}**`, ephemeral: true });
       const embed = new EmbedBuilder()
         .setColor('#00D1FF')
@@ -208,11 +214,16 @@ async function startBot() {
       const itemName = interaction.options.getString('item') || "";
       const qty = interaction.options.getInteger('quantity') || 1;
 
-      const vaultItem = await prisma.lootItem.findFirst({
-        where: { orgId: dbUser.orgId, name: { contains: itemName } }
-      });
+      const vaultItems: any[] = await prisma.$queryRaw`
+        SELECT *, similarity(name, ${itemName}) as score
+        FROM "LootItem"
+        WHERE "orgId" = ${dbUser.orgId} AND (name % ${itemName} OR name ILIKE ${'%' + itemName + '%'})
+        ORDER BY score DESC
+        LIMIT 1
+      `;
 
-      if (!vaultItem) return interaction.reply({ content: `❌ Error: Item **${itemName}** not found in the organization vault.`, ephemeral: true });
+      if (vaultItems.length === 0) return interaction.reply({ content: `❌ Error: Item **${itemName}** not found in the organization vault.`, ephemeral: true });
+      const vaultItem = vaultItems[0];
 
       await prisma.lootRequest.create({
         data: {

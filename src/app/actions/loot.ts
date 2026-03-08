@@ -38,8 +38,35 @@ export async function addLootItems(items: {
        throw new Error("Forbidden: Cannot add items to an organization you do not belong to.");
     }
 
+    // Try to fuzzy match with SCItemCache to enrich data
+    const enrichedItems = await Promise.all(validItems.map(async (item) => {
+      try {
+        const matches: any[] = await prisma.$queryRaw`
+          SELECT name, type, manufacturer, "subType"
+          FROM "SCItemCache"
+          WHERE name % ${item.name} OR name ILIKE ${item.name}
+          ORDER BY similarity(name, ${item.name}) DESC
+          LIMIT 1
+        `;
+        
+        if (matches.length > 0) {
+          const match = matches[0];
+          return {
+            ...item,
+            // Only fill if current item is missing data or generic
+            category: (item.category === "Unknown" || !item.category) ? (match.type || item.category) : item.category,
+            manufacturer: !item.manufacturer ? (match.manufacturer || null) : item.manufacturer,
+            subCategory: !item.subCategory ? (match.subType || null) : item.subCategory
+          };
+        }
+      } catch (e) {
+        console.error("Fuzzy enrichment failed for:", item.name);
+      }
+      return item;
+    }));
+
     await prisma.lootItem.createMany({
-      data: validItems.map(i => ({
+      data: enrichedItems.map(i => ({
         ...i,
         source: "Manual Entry",
         lastUpdatedBy: user.username
