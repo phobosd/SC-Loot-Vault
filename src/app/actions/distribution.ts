@@ -267,23 +267,26 @@ export async function finalizeGlobalSession(sessionId: string) {
         ? session.items 
         : session.items.filter(i => i.name === winningItemName);
 
-      // 2. Log and Decrement each physical asset
-      for (const sItem of itemsToAssign) {
-        // Create the official assignment log
-        await tx.distributionLog.create({
-          data: {
-            orgId: session.orgId,
-            recipientId: winner.userId,
-            itemName: sItem.name,
-            quantity: 1,
-            type: "ASSIGNED",
-            method: "SYNCHRONIZED_RNG",
-            performedBy: admin.username || "ADMIN"
-          }
-        });
+      // 2. Batch create distribution logs
+      await tx.distributionLog.createMany({
+        data: itemsToAssign.map(sItem => ({
+          orgId: session.orgId,
+          recipientId: winner.userId,
+          itemName: sItem.name,
+          quantity: 1,
+          type: "ASSIGNED",
+          method: "SYNCHRONIZED_RNG",
+          performedBy: admin.username || "ADMIN"
+        }))
+      });
 
-        // Pull from physical inventory
-        const vaultItem = await tx.lootItem.findUnique({ where: { id: sItem.itemId } });
+      // 3. Update physical inventory (Sequential to avoid deadlocks, but in transaction)
+      for (const sItem of itemsToAssign) {
+        const vaultItem = await tx.lootItem.findUnique({ 
+          where: { id: sItem.itemId },
+          select: { id: true, quantity: true } 
+        });
+        
         if (vaultItem) {
           if (vaultItem.quantity <= 1) {
             await tx.lootItem.delete({ where: { id: sItem.itemId } });
@@ -296,7 +299,7 @@ export async function finalizeGlobalSession(sessionId: string) {
         }
       }
 
-      // 3. Decommission session
+      // 4. Decommission session
       await tx.lootSession.update({
         where: { id: validated.sessionId },
         data: { status: "COMPLETED" }

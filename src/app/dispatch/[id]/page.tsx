@@ -29,98 +29,20 @@ import {
   finalizeGlobalSession
 } from "@/app/actions/distribution";
 import { useRouter } from "next/navigation";
-
-// --- MASTER RNG WHEEL COMPONENT (REPLICATED ACROSS ALL CLIENTS) ---
-function MasterRNGWheel({ participants, items, rotation, isSpinning, mode }: any) {
-  const segments = useMemo(() => {
-    const pool = mode === "OPERATORS" ? participants : items;
-    if (!pool || pool.length === 0) return [];
-
-    return pool.map((p: any, i: number) => {
-      const angle = 360 / pool.length;
-      const startAngle = i * angle;
-      const endAngle = (i + 1) * angle;
-      const radius = 100;
-      const x1 = 100 + radius * Math.cos((Math.PI * (startAngle - 90)) / 180);
-      const y1 = 100 + radius * Math.sin((Math.PI * (startAngle - 90)) / 180);
-      const x2 = 100 + radius * Math.cos((Math.PI * (endAngle - 90)) / 180);
-      const y2 = 100 + radius * Math.sin((Math.PI * (endAngle - 90)) / 180);
-      const largeArcFlag = angle > 180 ? 1 : 0;
-      const pathData = `M 100 100 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
-      
-      const label = mode === "OPERATORS" 
-        ? (p.user?.name || p.user?.username || "OPERATOR")
-        : p.name;
-
-      return { pathData, label, midAngle: startAngle + angle / 2 };
-    });
-  }, [participants, items, mode]);
-
-  return (
-    <div className="relative w-[350px] h-[350px] md:w-[500px] md:h-[500px] flex-shrink-0 transition-all duration-700">
-      <div className="absolute inset-[-40px] border border-sc-blue/10 rounded-full animate-pulse" />
-      <div className="absolute inset-[-20px] border border-sc-blue/20 rounded-full" />
-      
-      <div className="absolute top-[-60px] left-1/2 -translate-x-1/2 z-30 w-24 h-24 flex flex-col items-center pointer-events-none">
-        <div className="filter drop-shadow-[0_0_15px_rgba(0,209,255,0.9)] animate-bounce duration-[2000ms]">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-            <path d="M12 24L2 12H7V0H17V12H22L12 24Z" className="fill-sc-blue" />
-            <path d="M12 20L6 14H18L12 20Z" fill="black" fillOpacity="0.4" />
-          </svg>
-        </div>
-      </div>
-
-      <div 
-        className="w-full h-full rounded-full overflow-hidden border-4 border-sc-blue/30 bg-black/40 shadow-[0_0_100px_rgba(0,209,255,0.1)]"
-        style={{ 
-          transform: `rotate(${rotation}deg)`,
-          transitionProperty: 'transform',
-          transitionDuration: isSpinning ? '7000ms' : '500ms',
-          transitionTimingFunction: isSpinning ? 'cubic-bezier(0.15, 0, 0.15, 1)' : 'ease-out'
-        }}
-      >
-        <svg viewBox="0 0 200 200" className="w-full h-full">
-          {segments.map((s: any, i: number) => (
-            <g key={i}>
-              <path 
-                d={s.pathData} 
-                fill={i % 2 === 0 ? "rgba(10, 10, 20, 0.98)" : "rgba(15, 15, 30, 0.95)"}
-                stroke="rgba(0, 209, 255, 0.2)"
-                strokeWidth="0.4"
-              />
-              <text
-                x="100" y="25" transform={`rotate(${s.midAngle}, 100, 100)`}
-                fill="var(--sc-blue)" fontSize="6" fontWeight="900" textAnchor="middle" className="uppercase font-mono tracking-tighter"
-                style={{ textShadow: '0 0 3px rgba(0,209,255,0.5)' }}
-              >
-                {s.label.length > 18 ? s.label.substring(0, 16) + '...' : s.label}
-              </text>
-            </g>
-          ))}
-          <circle cx="100" cy="100" r="15" fill="#05050A" stroke="rgba(0, 209, 255, 0.5)" strokeWidth="1.5" />
-        </svg>
-      </div>
-
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full sc-glass border-2 border-sc-blue flex items-center justify-center z-20 bg-black shadow-[0_0_40px_rgba(0,209,255,0.2)]">
-        <div className="text-center">
-          <Zap className={cn("w-8 h-8 text-sc-blue mx-auto mb-1", isSpinning && "animate-ping")} />
-          <p className="text-[6px] font-black text-sc-blue uppercase tracking-[0.2em]">{mode}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { MasterRNGWheel } from "@/components/distributions/master-rng-wheel";
+import { SessionManifest, WinnerHUD, CommandControls } from "@/components/distributions/session-ui";
+import { LootSession, User as NexusUser } from "@/lib/types";
 
 export default function DispatchOpeningPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
+  const [session, setSession] = useState<LootSession | null>(null);
+  const [user, setUser] = useState<NexusUser | null>(null);
   
   const [localStatus, setLocalStatus] = useState<"ACTIVE" | "SPINNING" | "COMPLETED">("ACTIVE");
   const [reelItems, setReelItems] = useState<any[]>([]);
-  const [winnerUser, setWinnerUser] = useState<any>(null);
+  const [winnerUser, setWinnerUser] = useState<NexusUser | null>(null);
   const [winningItem, setWinningItem] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -130,8 +52,8 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
     try {
       const res = await axios.get(`/api/loot-sessions/${id}`);
       const userRes = await axios.get("/api/auth/session");
-      const s = res.data;
-      const u = userRes.data?.user;
+      const s = res.data as LootSession;
+      const u = userRes.data?.user as NexusUser;
       
       setSession(s);
       setUser(u);
@@ -152,7 +74,7 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
         setRotation(0);
       } else if (s.status === "COMPLETED" || (s.status === "SPINNING" && localStatus === "COMPLETED")) {
         const participant = s.participants.find((p: any) => p.userId === s.currentWinnerId);
-        if (participant?.user) setWinnerUser(participant.user);
+        if (participant?.user) setWinnerUser(participant.user as NexusUser);
         
         if (s.animationState) {
           const anim = JSON.parse(s.animationState);
@@ -178,13 +100,37 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
 
   useEffect(() => {
     fetchSession();
-    const interval = setInterval(fetchSession, 2000);
-    return () => clearInterval(interval);
+    
+    let intervalId: NodeJS.Timeout;
+    const startPolling = (ms: number) => {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(fetchSession, ms);
+    };
+
+    // Initial state: high frequency
+    startPolling(2000);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Slow down polling to 10s when tab is inactive
+        startPolling(10000);
+      } else {
+        // Resume 2s polling when tab is active
+        fetchSession();
+        startPolling(2000);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [id, localStatus]);
 
-  const handleTriggerAnimation = (s: any) => {
+  const handleTriggerAnimation = (s: LootSession) => {
     setLocalStatus("SPINNING");
-    const animData = JSON.parse(s.animationState);
+    const animData = JSON.parse(s.animationState!);
     setWinningItem(animData.winningItemName);
     
     setTimeout(() => {
@@ -231,7 +177,7 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
 
     setTimeout(() => {
       const participant = s.participants.find((p: any) => p.userId === s.currentWinnerId);
-      if (participant?.user) setWinnerUser(participant.user);
+      if (participant?.user) setWinnerUser(participant.user as NexusUser);
       setLocalStatus("COMPLETED");
     }, 7050);
   };
@@ -297,64 +243,29 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
         <div className="space-y-6">
           {localStatus === "COMPLETED" && winnerUser ? (
-            <div className="sc-glass p-8 border-sc-gold/50 bg-sc-gold/5 text-center animate-in zoom-in-95 duration-700 h-full flex flex-col justify-center min-h-[300px]">
-              <Trophy className="w-12 h-12 text-sc-gold mx-auto mb-4 animate-bounce" />
-              <p className="text-[10px] text-sc-gold uppercase font-mono tracking-[0.3em] mb-2">Sequence Result Detected</p>
-              <h2 className="text-3xl font-black text-white uppercase mb-1 tracking-tighter">{winnerUser.name || winnerUser.username}</h2>
-              <p className="text-xs text-sc-gold font-bold uppercase mb-6 tracking-widest">
-                WINS: {session.mode === "OPERATORS" ? `${session.items.length} Asset Manifest` : winningItem}
-              </p>
-              
-              {isAdmin && session.status !== "COMPLETED" && (
-                <div className="flex gap-4 mt-4">
-                  <button onClick={() => resetGlobalSession(id)} className="flex-1 py-4 bg-white/5 border border-white/10 text-white text-xs font-black uppercase tracking-widest rounded">Re-Spin</button>
-                  <button onClick={handleFinalize} disabled={isProcessing} className="flex-1 py-4 bg-sc-green/20 border border-sc-green/50 text-sc-green text-xs font-black uppercase tracking-widest rounded">
-                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Finalize & Distribute"}
-                  </button>
-                </div>
-              )}
-              {session.status === "COMPLETED" && (
-                <div className="mt-4 p-4 border border-sc-green/30 bg-sc-green/5 rounded flex items-center justify-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-sc-green" />
-                  <p className="text-[10px] text-sc-green font-black uppercase tracking-[0.2em]">Distribution Finalized & Logged</p>
-                </div>
-              )}
-            </div>
+            <WinnerHUD 
+              winnerUser={winnerUser}
+              sessionMode={session.mode}
+              itemCount={session.items.length}
+              winningItemName={winningItem}
+              isAdmin={isAdmin}
+              sessionStatus={session.status}
+              isProcessing={isProcessing}
+              onReset={() => resetGlobalSession(id)}
+              onFinalize={handleFinalize}
+            />
           ) : (
-            <div className="sc-glass p-8 border-sc-blue/20 flex flex-col min-h-[300px]">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-[10px] font-black text-sc-blue uppercase tracking-widest flex items-center gap-2">
-                  <Package className="w-4 h-4" /> Sequence Manifest
-                </h3>
-                <span className="text-[10px] font-mono text-gray-600 uppercase">{session.items.length} Assets at stake</span>
-              </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 max-h-[200px] pr-2">
-                {session.items.map((i: any) => (
-                  <div key={i.id} className="p-3 bg-black/40 border border-white/5 rounded flex items-center justify-between">
-                    <p className="text-[10px] font-bold text-white uppercase truncate pr-4">{i.name}</p>
-                    <span className="text-[8px] font-mono text-sc-blue/40 uppercase">{i.category}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <SessionManifest items={session.items} />
           )}
         </div>
 
         <div className="space-y-6">
           {isAdmin ? (
-            <div className="sc-glass p-8 border-sc-blue/30 bg-black/40 h-full flex flex-col justify-between min-h-[300px]">
-              <div className="space-y-4">
-                <h3 className="text-xs font-bold text-sc-blue uppercase tracking-widest flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4" /> Command Authorization
-                </h3>
-                <button onClick={() => startGlobalSpin(id)} disabled={localStatus !== "ACTIVE"} className="w-full py-8 bg-sc-blue/20 border border-sc-blue/50 text-sc-blue text-md font-black uppercase tracking-[0.5em] shadow-[0_0_30px_rgba(0,209,255,0.1)] transition-all disabled:opacity-30">
-                  Execute Sequence
-                </button>
-              </div>
-              <button onClick={handleTerminate} className="w-full py-3 bg-sc-red/10 border border-sc-red/30 text-sc-red text-[10px] uppercase font-black tracking-widest">
-                Decommission Dispatch Node
-              </button>
-            </div>
+            <CommandControls 
+              onStartSpin={() => startGlobalSpin(id)}
+              onTerminate={handleTerminate}
+              status={localStatus}
+            />
           ) : (
             <div className="sc-glass p-8 border-white/5 bg-black/20 h-full flex flex-col justify-center text-center min-h-[300px]">
               <Zap className="w-12 h-12 text-sc-gold mx-auto mb-6 opacity-20" />

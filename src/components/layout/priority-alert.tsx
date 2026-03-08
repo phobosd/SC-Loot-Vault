@@ -33,9 +33,32 @@ export function PriorityAlert() {
     };
 
     checkSessions();
-    // High-frequency sync for real-time dispatch alerts
-    const interval = setInterval(checkSessions, 3000);
-    return () => clearInterval(interval);
+    
+    let intervalId: NodeJS.Timeout;
+    const startPolling = (ms: number) => {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(checkSessions, ms);
+    };
+
+    // Initial state: 3s frequency
+    startPolling(3000);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Slow down to 15s when inactive
+        startPolling(15000);
+      } else {
+        // Resume 3s when active
+        checkSessions();
+        startPolling(3000);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [session]);
 
   if (activeSessions.length === 0) return null;

@@ -165,6 +165,9 @@ model LootItem {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   org           Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([category])
 }
 
 model SCItemCache {
@@ -181,6 +184,8 @@ model SCItemCache {
   imageUrl     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([type])
 }
 
 model DistributionLog {
@@ -195,6 +200,11 @@ model DistributionLog {
   timestamp   DateTime @default(now())
   org         Org?     @relation(fields: [orgId], references: [id], onDelete: SetNull)
   recipient   User?    @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+
+  @@index([orgId])
+  @@index([recipientId])
+  @@index([type])
+  @@index([timestamp])
 }
 
 model LootRequest {
@@ -212,6 +222,10 @@ model LootRequest {
   updatedAt    DateTime @updatedAt
   org          Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([status])
 }
 
 model LootSession {
@@ -231,6 +245,9 @@ model LootSession {
   org          Org?                     @relation(fields: [orgId], references: [id], onDelete: SetNull)
   items        LootSessionItem[]
   participants LootSessionParticipant[]
+
+  @@index([orgId])
+  @@index([status])
 }
 
 model LootSessionItem {

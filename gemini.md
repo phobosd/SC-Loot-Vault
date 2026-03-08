@@ -12,9 +12,10 @@ This document provides the essential operational context, architectural blueprin
 - **Core Framework:** [Next.js 16+](https://next.js.org/) (App Router)
 - **Database / ORM:** [Prisma](https://www.prisma.io/) with PostgreSQL.
 - **Security Logic:** Centralized in `src/lib/auth-checks.ts`. Always use `requireAuth`, `requireAdmin`, or `requireSuperAdmin` in Server Actions.
+- **Shared Types:** Centralized in `src/lib/types.ts`. Use these interfaces instead of `any` or inline definitions for domain models.
 - **State Management:** 
     - **Server:** Server Actions (`src/app/actions/*`) for all mutations.
-    - **Client:** React Hooks (`useState`, `useMemo`) + standard Polling (2s - 3s interval) for real-time HUD elements.
+    - **Client:** React Hooks (`useState`, `useMemo`) + **Smart Polling** (2s - 15s interval) for real-time HUD elements.
 - **Validation:** [Zod](https://zod.dev/) schemas in `src/lib/validations.ts` MUST be used to parse all incoming action data.
 
 ---
@@ -22,12 +23,11 @@ This document provides the essential operational context, architectural blueprin
 ## 🚀 2. Core Platform Features
 
 ### **A. Synchronized Real-Time Dispatch (Loot Sessions)**
-- **Mechanic:** RNG-based distribution using "Reel" (horizontal scroll) or "Wheel" (circular spin) animations.
-- **Synchronicity:** Achievements are synchronized across all connected clients via `animationState` (JSON) in the `LootSession` model.
-- **Deterministic RNG:** Uses `seededRandom(seed)` from `src/lib/utils.ts`. The seed is derived from a combination of the `sessionId` and `startTime`.
-- **Modes:** 
-    - `OPERATORS`: One winner takes all items in the session manifest.
-    - `ITEMS`: One item is selected and assigned to the first/selected participant.
+- **Mechanic:** RNG-based distribution using "Reel" or "Wheel" animations.
+- **Synchronicity:** Achievements are synchronized via `animationState` (JSON) in the `LootSession` model.
+- **Deterministic RNG:** Uses `seededRandom(seed)` from `src/lib/utils.ts`.
+- **Modularity:** Dispatch UI is decomposed into `MasterRNGWheel`, `SessionManifest`, `WinnerHUD`, and `CommandControls` in `src/components/distributions`.
+- **Smart Polling:** HUDs dynamically throttle background polling (e.g., from 2s to 10s+) when the browser tab is hidden using the `visibilitychange` event listener.
 
 ### **B. Discord Integration (Manifest Bridge)**
 - **Bot Location:** `scripts/run-bot.ts`.
