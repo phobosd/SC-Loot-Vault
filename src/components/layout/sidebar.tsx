@@ -18,7 +18,8 @@ import {
   Building2,
   Ghost,
   ShieldAlert,
-  Handshake
+  Handshake,
+  Heart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PriorityAlert } from "./priority-alert";
@@ -29,6 +30,7 @@ const menuItems = [
   { name: "Dashboard", href: "/dashboard", icon: Database },
   { name: "Org Loot", href: "/vault", icon: Package },
   { name: "Assigned Assets", href: "/assigned", icon: UserCheck },
+  { name: "My Wishlist", href: "/wishlist", icon: Heart },
   { name: "Galactic Manifest", href: "/superadmin/manifest", icon: Database },
   { name: "Distributions", href: "/distributions", icon: RotateCw },
   { name: "Alliance Network", href: "/alliances", icon: Handshake, role: ["ADMIN", "SUPERADMIN"] },

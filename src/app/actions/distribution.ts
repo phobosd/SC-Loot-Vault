@@ -271,3 +271,57 @@ export async function claimLootSessionItem(data: {
     return { success: false, error: error.message };
   }
 }
+
+export async function startGlobalSpin(sessionId: string) {
+  try {
+    const admin = await requireAdmin();
+    
+    const session = await prisma.lootSession.findUnique({
+      where: { id: sessionId },
+      include: { participants: true, items: true }
+    });
+
+    if (!session) throw new Error("Session not found");
+    if (session.status === "SPINNING") throw new Error("Decryption sequence already in progress.");
+
+    // 1. Pick a random winner from participants
+    const winnerIndex = Math.floor(Math.random() * session.participants.length);
+    const winnerId = session.participants[winnerIndex].userId;
+
+    // 2. Pick a random target index for the animation (e.g. 50-60)
+    const targetIndex = 50 + Math.floor(Math.random() * 10);
+    
+    // 3. Update session state
+    await prisma.lootSession.update({
+      where: { id: sessionId },
+      data: {
+        status: "SPINNING",
+        currentWinnerId: winnerId,
+        animationState: JSON.stringify({ targetIndex, startTime: new Date().toISOString() })
+      }
+    });
+
+    revalidatePath(`/dispatch/${sessionId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function resetGlobalSession(sessionId: string) {
+  try {
+    await requireAdmin();
+    await prisma.lootSession.update({
+      where: { id: sessionId },
+      data: {
+        status: "ACTIVE",
+        currentWinnerId: null,
+        animationState: null
+      }
+    });
+    revalidatePath(`/dispatch/${sessionId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

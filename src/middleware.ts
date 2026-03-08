@@ -51,5 +51,6 @@ export const config = {
     "/distributions/:path*",
     "/logs/:path*",
     "/api/:path*",
+    "/wishlist/:path*",
   ],
 };

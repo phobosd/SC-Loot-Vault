@@ -101,6 +101,18 @@ model User {
   lootParticipations LootSessionParticipant[]
   sessions           Session[]
   org                Org?                     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  wishlist           WishlistItem[]
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  wikiId    String   // Reference to SCItemCache
+  createdAt DateTime @default(now())
+
+  @@unique([userId, wikiId])
 }
 
 model Account {
@@ -206,7 +218,12 @@ model LootSession {
   id           String                   @id @default(cuid())
   orgId        String
   title        String
-  status       String                   @default("ACTIVE")
+  status       String                   @default("ACTIVE") // ACTIVE, SPINNING, COMPLETED, ARCHIVED
+  
+  // Real-time HUD fields
+  animationState String?                // JSON string of current spin state
+  currentWinnerId String?               // ID of the user who won (if determined)
+  
   createdAt    DateTime                 @default(now())
   updatedAt    DateTime                 @updatedAt
   org          Org                      @relation(fields: [orgId], references: [id], onDelete: Cascade)

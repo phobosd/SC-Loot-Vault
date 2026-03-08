@@ -17,7 +17,11 @@ export async function GET(
     include: {
       items: true,
       participants: {
-        where: { userId: session.user.id }
+        include: {
+          user: {
+            select: { id: true, name: true, username: true, image: true }
+          }
+        }
       }
     }
   });
