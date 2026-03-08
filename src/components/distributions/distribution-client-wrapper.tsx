@@ -10,11 +10,16 @@ import {
   X,
   Search,
   Shield,
-  Handshake
+  Handshake,
+  Zap,
+  ChevronRight
 } from "lucide-react";
 import { DrawingArea } from "@/components/distributions/drawing-area";
 import { CreateSessionDialog } from "@/components/distributions/create-session-dialog";
 import { cn } from "@/lib/utils";
+import { useEffect } from "react";
+import axios from "axios";
+import Link from "next/link";
 
 interface DistributionClientWrapperProps {
   org: any;
@@ -22,6 +27,7 @@ interface DistributionClientWrapperProps {
   recentLogs: any[];
   allUsers: any[];
   userRole: string;
+  initialActiveSessions: any[];
 }
 
 export function DistributionClientWrapper({ 
@@ -29,16 +35,33 @@ export function DistributionClientWrapper({
   inventory, 
   recentLogs, 
   allUsers, 
-  userRole 
+  userRole,
+  initialActiveSessions
 }: DistributionClientWrapperProps) {
   // UI State
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isParamsOpen, setIsParamsOpen] = useState(false);
+  const [activeSessions, setActiveSessions] = useState(initialActiveSessions);
   
   // Params State
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [allianceFilter, setAllianceFilter] = useState<"LOCAL" | "ALLIANCE">("LOCAL");
   const [searchHistory, setSearchHistory] = useState("");
+
+  // Polling for active sessions
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await axios.get('/api/loot-sessions'); // I'll need to create this endpoint or use /api/my-loot-sessions
+        setActiveSessions(res.data);
+      } catch (err) {
+        console.error("Session sync failure:", err);
+      }
+    };
+
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const participants = allUsers.filter(u => {
     // 1. Filter by Organization (Local vs Alliance)
@@ -56,6 +79,38 @@ export function DistributionClientWrapper({
 
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-700">
+      {/* Live Dispatch Links - Auto-appearing */}
+      {activeSessions.length > 0 && (
+        <div className="space-y-4 animate-in slide-in-from-top-4 duration-500">
+          <h2 className="text-[10px] font-black text-sc-blue uppercase tracking-[0.4em] flex items-center gap-2">
+            <Zap className="w-3 h-3 text-sc-gold animate-pulse" />
+            Active Dispatch Links Detected
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeSessions.map((session) => (
+              <Link 
+                key={session.id}
+                href={`/dispatch/${session.id}`}
+                className="sc-glass p-4 border-sc-blue/30 bg-sc-blue/[0.02] hover:bg-sc-blue/[0.05] transition-all flex items-center justify-between group shadow-[0_0_20px_rgba(0,209,255,0.05)]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 sc-hud-corner flex items-center justify-center bg-sc-blue/10 border border-sc-blue/20 group-hover:border-sc-blue/50 transition-colors">
+                    <RotateCw className="w-5 h-5 text-sc-blue animate-spin-slow" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white uppercase tracking-wider">{session.title}</p>
+                    <p className="text-[8px] text-sc-blue/40 font-mono uppercase tracking-widest">
+                      {session.participants.length} OPERATORS SYNCED
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-sc-blue opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white uppercase flex items-center gap-3">

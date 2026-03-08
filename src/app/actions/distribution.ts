@@ -14,10 +14,9 @@ export async function assignItemToOperator(data: {
 }) {
   try {
     await requireAdmin();
-    await requireOrgAccess(data.orgId); // Verify admin has access to this org
+    await requireOrgAccess(data.orgId);
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Get the item
       const item = await tx.lootItem.findUnique({
         where: { id: data.lootItemId }
       });
@@ -26,7 +25,6 @@ export async function assignItemToOperator(data: {
         throw new Error("Insufficient manifest quantity or unauthorized.");
       }
 
-      // 2. Create the log entry
       const log = await tx.distributionLog.create({
         data: {
           orgId: data.orgId,
@@ -39,7 +37,6 @@ export async function assignItemToOperator(data: {
         },
       });
 
-      // 3. Update or delete the item
       if (item.quantity === data.quantity) {
         await tx.lootItem.delete({
           where: { id: data.lootItemId }
@@ -47,11 +44,7 @@ export async function assignItemToOperator(data: {
       } else {
         await tx.lootItem.update({
           where: { id: data.lootItemId },
-          data: {
-            quantity: {
-              decrement: data.quantity
-            }
-          }
+          data: { quantity: { decrement: data.quantity } }
         });
       }
 
@@ -84,7 +77,6 @@ export async function recordDistribution(data: {
     await requireOrgAccess(data.orgId);
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Create the log entry
       const log = await tx.distributionLog.create({
         data: {
           orgId: data.orgId,
@@ -97,7 +89,6 @@ export async function recordDistribution(data: {
         },
       });
 
-      // 2. Decrement the item quantity if a lootItemId was provided
       if (data.lootItemId) {
         const item = await tx.lootItem.findUnique({
           where: { id: data.lootItemId }
@@ -126,7 +117,6 @@ export async function recordDistribution(data: {
     
     return { success: true, log: result };
   } catch (error: any) {
-    console.error("Distribution recording error:", error);
     return { success: false, error: error.message };
   }
 }
@@ -134,35 +124,40 @@ export async function recordDistribution(data: {
 export async function createLootSession(data: {
   orgId: string;
   title: string;
-  itemIds: string[]; // List of IDs from LootItem
+  itemIds: string[];
   participantIds: string[];
+  type?: string;
+  mode?: string;
 }) {
   try {
-    await requireAdmin();
-    await requireOrgAccess(data.orgId);
+    const admin = await requireAdmin();
+    const isGlobal = data.orgId === "GLOBAL" || (admin.role === "SUPERADMIN" && !admin.orgId);
+    
+    if (!isGlobal) {
+      await requireOrgAccess(data.orgId);
+    }
 
     const items = await prisma.lootItem.findMany({
-      where: { 
-        id: { in: data.itemIds },
-        orgId: data.orgId // Verify all items belong to this org
-      }
+      where: { id: { in: data.itemIds } }
     });
 
     if (items.length !== data.itemIds.length) {
-       throw new Error("Some items were not found or do not belong to your organization.");
+       throw new Error(`Verification failure: Requested ${data.itemIds.length} assets, found ${items.length}.`);
     }
 
     const session = await prisma.lootSession.create({
       data: {
-        orgId: data.orgId,
+        orgId: isGlobal ? null : data.orgId,
         title: data.title,
         status: "ACTIVE",
+        type: data.type || "REEL",
+        mode: data.mode || "OPERATORS",
         items: {
           create: items.map(item => ({
             itemId: item.id,
             name: item.name,
             category: item.category,
-            rarity: "COMMON" // Randomize rarities or let admin pick? Default common for now.
+            rarity: "COMMON"
           }))
         },
         participants: {
@@ -173,15 +168,14 @@ export async function createLootSession(data: {
       }
     });
 
-    // Log the session creation
     await prisma.distributionLog.create({
       data: {
-        orgId: data.orgId,
-        itemName: `Dispatch Session Initialized: ${data.title}`,
+        orgId: isGlobal ? null : data.orgId,
+        itemName: `Dispatch sequence initialized: ${data.title} (${data.mode || 'OPERATORS'})`,
         quantity: data.participantIds.length,
         type: "DISPATCH_START",
         method: "ADMIN_ACTION",
-        performedBy: (await requireAdmin()).username || "ADMIN"
+        performedBy: admin.username || "ADMIN"
       }
     });
 
@@ -194,113 +188,110 @@ export async function createLootSession(data: {
   }
 }
 
-export async function claimLootSessionItem(data: {
-  sessionId: string;
-  userId: string;
-  wonItemName: string;
-  lootItemId: string; // The specific vault item
-}) {
-  try {
-    const user = await requireAuth();
-    if (user.id !== data.userId && user.role !== "SUPERADMIN") {
-      throw new Error("Forbidden: Cannot claim items for another user.");
-    }
-
-    const result = await prisma.$transaction(async (tx) => {
-      // Verify session exists and user is a participant
-      const session = await tx.lootSession.findUnique({
-         where: { id: data.sessionId },
-         include: { participants: true }
-      });
-      if (!session) throw new Error("Session not found");
-      const isParticipant = session.participants.some(p => p.userId === data.userId);
-      if (!isParticipant) throw new Error("User is not a participant in this session.");
-
-      // 1. Mark participant as having opened
-      await tx.lootSessionParticipant.update({
-        where: {
-          sessionId_userId: {
-            sessionId: data.sessionId,
-            userId: data.userId
-          }
-        },
-        data: {
-          openedAt: new Date(),
-          wonItemName: data.wonItemName
-        }
-      });
-
-      // 2. Get the item from vault
-      const item = await tx.lootItem.findUnique({
-        where: { id: data.lootItemId }
-      });
-
-      if (!item || item.quantity < 1 || item.orgId !== session.orgId) {
-        throw new Error("Target asset manifest depleted, offline, or unauthorized.");
-      }
-
-      // 3. Create assignment log
-      const log = await tx.distributionLog.create({
-        data: {
-          orgId: item.orgId,
-          recipientId: data.userId,
-          itemName: data.wonItemName,
-          quantity: 1,
-          type: "ASSIGNED",
-          method: "CRATE_OPENING"
-        }
-      });
-
-      // 4. Update vault
-      if (item.quantity <= 1) {
-        await tx.lootItem.delete({ where: { id: data.lootItemId } });
-      } else {
-        await tx.lootItem.update({
-          where: { id: data.lootItemId },
-          data: { quantity: { decrement: 1 } }
-        });
-      }
-
-      return log;
-    });
-
-    revalidatePath("/vault");
-    revalidatePath("/assigned");
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
 export async function startGlobalSpin(sessionId: string) {
   try {
     const admin = await requireAdmin();
-    
     const session = await prisma.lootSession.findUnique({
       where: { id: sessionId },
       include: { participants: true, items: true }
     });
 
     if (!session) throw new Error("Session not found");
-    if (session.status === "SPINNING") throw new Error("Decryption sequence already in progress.");
+    if (session.status === "SPINNING") throw new Error("Already in progress.");
 
-    // 1. Pick a random winner from participants
-    const winnerIndex = Math.floor(Math.random() * session.participants.length);
-    const winnerId = session.participants[winnerIndex].userId;
+    let currentWinnerId = null;
+    let winningItemName = null;
 
-    // 2. Pick a random target index for the animation (e.g. 50-60)
+    if (session.mode === "OPERATORS") {
+      const winnerIndex = Math.floor(Math.random() * session.participants.length);
+      currentWinnerId = session.participants[winnerIndex].userId;
+      winningItemName = "ALL SESSION ASSETS";
+    } else {
+      const itemIndex = Math.floor(Math.random() * session.items.length);
+      winningItemName = session.items[itemIndex].name;
+      // In Items mode, assume the first/selected participant is the recipient
+      currentWinnerId = session.participants[0]?.userId;
+    }
+
     const targetIndex = 50 + Math.floor(Math.random() * 10);
     
-    // 3. Update session state
     await prisma.lootSession.update({
       where: { id: sessionId },
       data: {
         status: "SPINNING",
-        currentWinnerId: winnerId,
-        animationState: JSON.stringify({ targetIndex, startTime: new Date().toISOString() })
+        currentWinnerId,
+        animationState: JSON.stringify({ targetIndex, startTime: new Date().toISOString(), winningItemName })
       }
     });
 
+    revalidatePath(`/dispatch/${sessionId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function finalizeGlobalSession(sessionId: string) {
+  try {
+    const admin = await requireAdmin();
+    const session = await prisma.lootSession.findUnique({
+      where: { id: sessionId },
+      include: { participants: { include: { user: true } }, items: true }
+    });
+
+    if (!session || !session.currentWinnerId) throw new Error("No winner designated.");
+
+    const winner = session.participants.find(p => p.userId === session.currentWinnerId);
+    if (!winner) throw new Error("Winner profile unreachable.");
+
+    const animData = session.animationState ? JSON.parse(session.animationState) : null;
+    const winningItemName = animData?.winningItemName;
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Determine which items to assign
+      const itemsToAssign = session.mode === "OPERATORS" 
+        ? session.items 
+        : session.items.filter(i => i.name === winningItemName);
+
+      // 2. Log and Decrement each physical asset
+      for (const sItem of itemsToAssign) {
+        // Create the official assignment log
+        await tx.distributionLog.create({
+          data: {
+            orgId: session.orgId,
+            recipientId: winner.userId,
+            itemName: sItem.name,
+            quantity: 1,
+            type: "ASSIGNED",
+            method: "SYNCHRONIZED_RNG",
+            performedBy: admin.username || "ADMIN"
+          }
+        });
+
+        // Pull from physical inventory
+        const vaultItem = await tx.lootItem.findUnique({ where: { id: sItem.itemId } });
+        if (vaultItem) {
+          if (vaultItem.quantity <= 1) {
+            await tx.lootItem.delete({ where: { id: sItem.itemId } });
+          } else {
+            await tx.lootItem.update({
+              where: { id: sItem.itemId },
+              data: { quantity: { decrement: 1 } }
+            });
+          }
+        }
+      }
+
+      // 3. Decommission session
+      await tx.lootSession.update({
+        where: { id: sessionId },
+        data: { status: "COMPLETED" }
+      });
+    });
+
+    revalidatePath("/vault");
+    revalidatePath("/assigned");
+    revalidatePath("/logs");
     revalidatePath(`/dispatch/${sessionId}`);
     return { success: true };
   } catch (error: any) {
@@ -319,6 +310,21 @@ export async function resetGlobalSession(sessionId: string) {
         animationState: null
       }
     });
+    revalidatePath(`/dispatch/${sessionId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function archiveGlobalSession(sessionId: string) {
+  try {
+    await requireAdmin();
+    await prisma.lootSession.update({
+      where: { id: sessionId },
+      data: { status: "ARCHIVED" }
+    });
+    revalidatePath("/distributions");
     revalidatePath(`/dispatch/${sessionId}`);
     return { success: true };
   } catch (error: any) {

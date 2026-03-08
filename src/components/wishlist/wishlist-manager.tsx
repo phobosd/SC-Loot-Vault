@@ -111,7 +111,7 @@ export function WishlistManager({ initialWishlist, availableItems, orgId, userId
   return (
     <div className="space-y-8">
       {/* Search Header */}
-      <div className="sc-glass p-6 rounded-lg border-sc-blue/30 relative">
+      <div className="sc-glass p-6 rounded-lg border-sc-blue/30 relative z-[100]">
         <div className="flex items-center gap-4 mb-4">
           <div className="w-10 h-10 sc-hud-corner flex items-center justify-center bg-sc-blue/5 border border-sc-blue/20">
             <Search className="w-5 h-5 text-sc-blue" />
@@ -134,7 +134,7 @@ export function WishlistManager({ initialWishlist, availableItems, orgId, userId
         </div>
 
         {suggestions.length > 0 && (
-          <div className="absolute left-6 right-6 md:left-20 md:right-auto md:w-[500px] mt-1 sc-glass border border-sc-blue/50 shadow-2xl z-[110] max-h-64 overflow-y-auto bg-[#0A0A12]">
+          <div className="absolute left-0 right-0 md:left-0 md:right-auto md:w-[500px] mt-2 sc-glass border border-sc-blue/50 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[999] max-h-64 overflow-y-auto bg-[#0A0A12]/95 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
             {suggestions.map((s) => (
               <button
                 key={s.wikiId}

@@ -216,9 +216,11 @@ model LootRequest {
 
 model LootSession {
   id           String                   @id @default(cuid())
-  orgId        String
+  orgId        String?
   title        String
   status       String                   @default("ACTIVE") // ACTIVE, SPINNING, COMPLETED, ARCHIVED
+  type         String                   @default("REEL")   // REEL, WHEEL
+  mode         String                   @default("OPERATORS") // OPERATORS, ITEMS
   
   // Real-time HUD fields
   animationState String?                // JSON string of current spin state
@@ -226,7 +228,7 @@ model LootSession {
   
   createdAt    DateTime                 @default(now())
   updatedAt    DateTime                 @updatedAt
-  org          Org                      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org          Org?                     @relation(fields: [orgId], references: [id], onDelete: SetNull)
   items        LootSessionItem[]
   participants LootSessionParticipant[]
 }

@@ -10,15 +10,18 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const org = await prisma.org.findUnique({
-    where: { id: session.user.orgId }
-  });
+  const orgId = session.user.orgId;
+  let org = null;
 
-  if (!org) return NextResponse.json({ error: "Org not found" }, { status: 404 });
+  if (orgId) {
+    org = await prisma.org.findUnique({
+      where: { id: orgId }
+    });
+  }
 
   const assignments = await prisma.distributionLog.findMany({
     where: { 
-      orgId: org.id,
+      ...(orgId ? { orgId } : {}),
       type: "ASSIGNED"
     },
     include: {
@@ -34,8 +37,8 @@ export async function GET() {
     orderBy: { timestamp: 'desc' }
   });
 
-  return NextResponse.json({ 
+  return NextResponse.json({
     assignments,
-    orgName: org.name
+    orgName: org?.name || "NEXUS NETWORK"
   });
 }

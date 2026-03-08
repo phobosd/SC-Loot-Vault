@@ -37,6 +37,21 @@ An immersive, high-tech Star Citizen Organization Loot Vault Manager. This platf
 - **Cross-Org Requests:** Request specific loot directly from an ally's inventory.
 - **Global Command (SuperAdmin):** Direct oversight and manual override of all diplomatic links in the network.
 
+### ❤️ Personnel Wishlist
+- **Target Designation:** Search the Galactic Manifest and add items to your personal procurement wishlist.
+- **Network Intelligence:** Automatically cross-references your wishlist against your Org Vault and all Allied Vaults.
+- **Proximity Alerts:** Visual indicators (Amber/Green) highlight when a wishlisted item is detected in an available manifest.
+- **Instant Procurement:** Direct "Request Asset" button appears for items found within the diplomatic network.
+
+### 🎡 Synchronized RNG Dispatch HUD
+- **Real-Time Lobby:** Participants join a shared, synchronized lobby for high-stakes loot distributions.
+- **Dual Visual Protocols:** Switch between **Operator Wheel** (rotary spin) and **Box Opening** (horizontal reel) interfaces.
+- **Seeded Synchronization:** Seeded entropy ensures every participant sees the exact same items and animation result simultaneously.
+- **Dual RNG Logic:** 
+    - **Winner takes ALL:** Multiple operators on the wheel; winner receives the entire session manifest.
+    - **Winner takes 1 ASSET:** Assets on the wheel; recipient receives the specific item landed upon.
+- **Command Control:** Admins can trigger global spins, re-spin for next cycles, and finalize distributions to decrement vault quantities automatically.
+
 ### 📜 Master Audit Manifest
 - **Full Transparency:** Every action (Loot added, Alliances created, Personnel enrollment) is recorded in a permanent audit trail.
 - **Global View:** SuperAdmins have a unified, network-wide transaction manifest for total oversight.
@@ -46,11 +61,6 @@ An immersive, high-tech Star Citizen Organization Loot Vault Manager. This platf
 - **RBAC Enforcement:** Strict Role-Based Access Control (MEMBER, ADMIN, SUPERADMIN).
 - **Organization Isolation:** Multi-tenant architecture ensures data is strictly isolated between organization nodes.
 - **Input Hardening:** All telemetry inputs are validated via Zod to prevent malformed data injections.
-
-### 🎡 Advanced RNG Distribution
-- **Dual Modes:** Toggle between **Operator Wheel** (winner gets pooled items) and **Item Roulette** (lone recipient wins one of many items).
-- **Dynamic Selection:** Real-time multi-select and "Select All" tools for designating eligible operators.
-- **Joint Selection:** Automatically includes allied personnel nodes when diplomatic links are active.
 
 ### 🤖 Discord Manifest Bridge
 - **Advanced Commands:** Supports both Prefix (`!vault`) and Slash (`/`) commands.
