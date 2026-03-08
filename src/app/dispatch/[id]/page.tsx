@@ -23,7 +23,6 @@ import {
 import axios from "axios";
 import { cn } from "@/lib/utils";
 import { 
-  claimLootSessionItem, 
   startGlobalSpin, 
   resetGlobalSession, 
   archiveGlobalSession,
