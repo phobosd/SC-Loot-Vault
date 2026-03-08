@@ -4,7 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAuth, requireOrgAccess } from "@/lib/auth-checks";
 
-import { addLootItemsSchema } from "@/lib/validations";
+import { 
+  addLootItemsSchema, 
+  removeLootItemsSchema,
+  updateLootItemSchema,
+  wipeLootManifestSchema,
+  createLootRequestSchema,
+  approveLootRequestSchema,
+  rejectLootRequestSchema
+} from "@/lib/validations";
 
 export async function addLootItems(items: {
   orgId: string;
@@ -71,12 +79,13 @@ export async function addLootItems(items: {
 
 export async function removeLootItems(itemIds: string[]) {
   try {
+    const validated = removeLootItemsSchema.parse({ itemIds });
     const user = await requireAdmin();
 
     // Only delete items that belong to the user's organization
     await prisma.lootItem.deleteMany({
       where: {
-        id: { in: itemIds },
+        id: { in: validated.itemIds },
         ...(user.role !== "SUPERADMIN" ? { orgId: user.orgId } : {})
       }
     });
@@ -85,8 +94,8 @@ export async function removeLootItems(itemIds: string[]) {
     await prisma.distributionLog.create({
       data: {
         orgId: user.orgId || null,
-        itemName: `Manifest Purge: ${itemIds.length} items removed`,
-        quantity: itemIds.length,
+        itemName: `Manifest Purge: ${validated.itemIds.length} items removed`,
+        quantity: validated.itemIds.length,
         type: "MANIFEST_REMOVE",
         method: "MANUAL_DELETION",
         performedBy: user.username || "ADMIN"
@@ -104,10 +113,11 @@ export async function removeLootItems(itemIds: string[]) {
 
 export async function updateLootItem(itemId: string, quantity: number) {
   try {
+    const validated = updateLootItemSchema.parse({ itemId, quantity });
     const user = await requireAdmin();
     
     // First find the item to ensure it belongs to the admin's org
-    const item = await prisma.lootItem.findUnique({ where: { id: itemId }});
+    const item = await prisma.lootItem.findUnique({ where: { id: validated.itemId }});
     if (!item) throw new Error("Item not found");
     
     if (user.role !== "SUPERADMIN" && item.orgId !== user.orgId) {
@@ -115,8 +125,8 @@ export async function updateLootItem(itemId: string, quantity: number) {
     }
 
     await prisma.lootItem.update({
-      where: { id: itemId },
-      data: { quantity, lastUpdatedBy: user.username }
+      where: { id: validated.itemId },
+      data: { quantity: validated.quantity, lastUpdatedBy: user.username }
     });
     revalidatePath("/vault");
     revalidatePath("/dashboard");
@@ -128,13 +138,14 @@ export async function updateLootItem(itemId: string, quantity: number) {
 
 export async function wipeLootManifest(orgId: string) {
   try {
+    const validated = wipeLootManifestSchema.parse({ orgId });
     const user = await requireAdmin();
-    if (user.role !== "SUPERADMIN" && user.orgId !== orgId) {
+    if (user.role !== "SUPERADMIN" && user.orgId !== validated.orgId) {
       throw new Error("Forbidden: Cannot wipe another organization's manifest.");
     }
 
     await prisma.lootItem.deleteMany({
-      where: { orgId }
+      where: { orgId: validated.orgId }
     });
     revalidatePath("/vault");
     revalidatePath("/dashboard");
@@ -154,20 +165,21 @@ export async function createLootRequest(data: {
   targetOrgId?: string | null;
 }) {
   try {
+    const validated = createLootRequestSchema.parse(data);
     const user = await requireAuth();
-    if (user.id !== data.userId && user.role !== "SUPERADMIN") {
+    if (user.id !== validated.userId && user.role !== "SUPERADMIN") {
       throw new Error("Forbidden: Cannot create a request for another user.");
     }
 
     const request = await prisma.lootRequest.create({
       data: {
-        orgId: data.orgId,
-        userId: data.userId,
-        itemId: data.itemId,
-        itemName: data.itemName,
-        category: data.category,
-        quantity: data.quantity,
-        targetOrgId: data.targetOrgId || null,
+        orgId: validated.orgId,
+        userId: validated.userId,
+        itemId: validated.itemId,
+        itemName: validated.itemName,
+        category: validated.category,
+        quantity: validated.quantity,
+        targetOrgId: validated.targetOrgId || null,
         status: "PENDING"
       }
     });
@@ -175,10 +187,10 @@ export async function createLootRequest(data: {
     // Log the request
     await prisma.distributionLog.create({
       data: {
-        orgId: data.orgId,
-        recipientId: data.userId,
-        itemName: `Asset Requested: ${data.itemName}`,
-        quantity: data.quantity,
+        orgId: validated.orgId,
+        recipientId: validated.userId,
+        itemName: `Asset Requested: ${validated.itemName}`,
+        quantity: validated.quantity,
         type: "LOOT_REQUEST",
         method: "USER_ACTION",
         performedBy: user.username || "MEMBER"
@@ -196,10 +208,11 @@ export async function createLootRequest(data: {
 
 export async function approveLootRequest(requestId: string, adminId: string) {
   try {
+    const validated = approveLootRequestSchema.parse({ requestId, adminId });
     const admin = await requireAdmin();
     
     const request = await prisma.lootRequest.findUnique({
-      where: { id: requestId },
+      where: { id: validated.requestId },
       include: { org: true, user: true }
     });
 
@@ -236,12 +249,12 @@ export async function approveLootRequest(requestId: string, adminId: string) {
           quantity: request.quantity,
           type: "ASSIGNED",
           method: "REQUEST_APPROVAL",
-          performedBy: admin.username || adminId
+          performedBy: admin.username || validated.adminId
         }
       }),
       // Update request status
       prisma.lootRequest.update({
-        where: { id: requestId },
+        where: { id: validated.requestId },
         data: { status: "APPROVED" }
       })
     ]);
@@ -257,10 +270,11 @@ export async function approveLootRequest(requestId: string, adminId: string) {
 
 export async function rejectLootRequest(requestId: string, reason: string) {
   try {
+    const validated = rejectLootRequestSchema.parse({ requestId, reason });
     const admin = await requireAdmin();
     
     const request = await prisma.lootRequest.findUnique({
-      where: { id: requestId }
+      where: { id: validated.requestId }
     });
     
     if (!request) throw new Error("Request not found");
@@ -271,10 +285,10 @@ export async function rejectLootRequest(requestId: string, reason: string) {
     }
 
     await prisma.lootRequest.update({
-      where: { id: requestId },
+      where: { id: validated.requestId },
       data: { 
         status: "REJECTED",
-        denialReason: reason
+        denialReason: validated.reason
       }
     });
 

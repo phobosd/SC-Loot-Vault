@@ -5,6 +5,17 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperAdmin } from "@/lib/auth-checks";
 import bcrypt from "bcryptjs";
 
+import { 
+  provisionOrgSchema, 
+  updateOrgSchema, 
+  deleteOrgSchema, 
+  updateOrgDiscordSchema,
+  updateOrgSettingsSchema,
+  submitOrgRequestSchema,
+  approveOrgRequestSchema,
+  rejectOrgRequestSchema
+} from "@/lib/validations";
+
 export async function provisionOrg(data: {
   name: string;
   slug: string;
@@ -16,40 +27,41 @@ export async function provisionOrg(data: {
   accentColor?: string;
 }) {
   try {
+    const validated = provisionOrgSchema.parse(data);
     const superAdmin = await requireSuperAdmin();
     
     // 1. Create the Org
     const org = await prisma.org.create({
       data: {
-        name: data.name,
-        slug: data.slug.toLowerCase(),
-        primaryColor: data.primaryColor || "#0A0A12",
-        accentColor: data.accentColor || "#00D1FF",
+        name: validated.name,
+        slug: validated.slug.toLowerCase(),
+        primaryColor: validated.primaryColor || "#0A0A12",
+        accentColor: validated.accentColor || "#00D1FF",
         whitelabelConfig: {
           create: {
-            headerText: data.name,
-            footerText: `${data.name} Vault`,
+            headerText: validated.name,
+            footerText: `${validated.name} Vault`,
           }
         }
       }
     });
 
     // 2. Create the initial ADMIN user for this Org
-    const initialUsername = data.requesterName.replace(/\s+/g, '').toUpperCase();
+    const initialUsername = validated.requesterName.replace(/\s+/g, '').toUpperCase();
     
     let finalHashedPassword;
-    if (data.isPasswordHashed && data.adminPassword) {
-      finalHashedPassword = data.adminPassword;
+    if (data.isPasswordHashed && validated.adminPassword) {
+      finalHashedPassword = validated.adminPassword;
     } else {
-      finalHashedPassword = await bcrypt.hash(data.adminPassword || "welcome123", 10);
+      finalHashedPassword = await bcrypt.hash(validated.adminPassword || "welcome123", 10);
     }
 
     await prisma.user.create({
       data: {
         username: initialUsername,
         password: finalHashedPassword,
-        name: data.requesterName,
-        email: data.contactInfo.includes('@') ? data.contactInfo : null,
+        name: validated.requesterName,
+        email: validated.contactInfo.includes('@') ? validated.contactInfo : null,
         role: "ADMIN",
         orgId: org.id,
         status: "APPROVED"
@@ -100,14 +112,15 @@ export async function updateOrg(orgId: string, data: {
   accentColor: string;
 }) {
   try {
+    const validated = updateOrgSchema.parse({ orgId, ...data });
     const superAdmin = await requireSuperAdmin();
     const org = await prisma.org.update({
-      where: { id: orgId },
+      where: { id: validated.orgId },
       data: {
-        name: data.name,
-        slug: data.slug.toLowerCase(),
-        primaryColor: data.primaryColor,
-        accentColor: data.accentColor,
+        name: validated.name,
+        slug: validated.slug.toLowerCase(),
+        primaryColor: validated.primaryColor,
+        accentColor: validated.accentColor,
       }
     });
 
@@ -142,16 +155,17 @@ export async function updateOrg(orgId: string, data: {
 
 export async function deleteOrg(orgId: string) {
   try {
+    const validated = deleteOrgSchema.parse({ orgId });
     const superAdmin = await requireSuperAdmin();
-    const org = await prisma.org.findUnique({ where: { id: orgId } });
+    const org = await prisma.org.findUnique({ where: { id: validated.orgId } });
 
     await prisma.org.delete({
-      where: { id: orgId }
+      where: { id: validated.orgId }
     });
 
     await prisma.distributionLog.create({
       data: {
-        itemName: `Organization Decommissioned: ${org?.name || orgId}`,
+        itemName: `Organization Decommissioned: ${org?.name || validated.orgId}`,
         quantity: 1,
         type: "ORG_DELETED",
         method: "ADMIN_ACTION",
@@ -172,22 +186,23 @@ export async function updateOrgDiscord(orgId: string, data: {
   discordGuildId?: string;
 }) {
   try {
+    const validated = updateOrgDiscordSchema.parse({ orgId, ...data });
     const user = await requireAdmin();
-    if (user.role !== "SUPERADMIN" && user.orgId !== orgId) {
+    if (user.role !== "SUPERADMIN" && user.orgId !== validated.orgId) {
       throw new Error("Forbidden: Cannot update Discord settings for another organization.");
     }
     
     await prisma.org.update({
-      where: { id: orgId },
+      where: { id: validated.orgId },
       data: {
-        discordBotToken: data.discordBotToken,
-        discordGuildId: data.discordGuildId,
+        discordBotToken: validated.discordBotToken,
+        discordGuildId: validated.discordGuildId,
       }
     });
 
     await prisma.distributionLog.create({
       data: {
-        orgId: orgId,
+        orgId: validated.orgId,
         itemName: `Discord Bot Configuration Updated`,
         quantity: 1,
         type: "ORG_CONFIG_CHANGE",
@@ -217,42 +232,43 @@ export async function updateOrgSettings(orgId: string, data: {
   footerText?: string | null;
 }) {
   try {
+    const validated = updateOrgSettingsSchema.parse({ orgId, ...data });
     const user = await requireAdmin();
-    if (user.role !== "SUPERADMIN" && user.orgId !== orgId) {
+    if (user.role !== "SUPERADMIN" && user.orgId !== validated.orgId) {
       throw new Error("Forbidden: Cannot update settings for another organization.");
     }
 
     await prisma.$transaction([
       prisma.org.update({
-        where: { id: orgId },
+        where: { id: validated.orgId },
         data: {
-          name: data.name,
-          primaryColor: data.primaryColor,
-          accentColor: data.accentColor,
-          secondaryColor: data.secondaryColor,
-          successColor: data.successColor,
-          dangerColor: data.dangerColor,
-          textColor: data.textColor,
-          logoUrl: data.logoUrl,
+          name: validated.name,
+          primaryColor: validated.primaryColor,
+          accentColor: validated.accentColor,
+          secondaryColor: validated.secondaryColor,
+          successColor: validated.successColor,
+          dangerColor: validated.dangerColor,
+          textColor: validated.textColor,
+          logoUrl: validated.logoUrl,
         }
       }),
       prisma.whitelabelConfig.upsert({
-        where: { orgId: orgId },
+        where: { orgId: validated.orgId },
         update: {
-          headerText: data.headerText,
-          footerText: data.footerText,
+          headerText: validated.headerText,
+          footerText: validated.footerText,
         },
         create: {
-          orgId: orgId,
-          headerText: data.headerText,
-          footerText: data.footerText,
+          orgId: validated.orgId,
+          headerText: validated.headerText,
+          footerText: validated.footerText,
         }
       })
     ]);
 
     await prisma.distributionLog.create({
       data: {
-        orgId: orgId,
+        orgId: validated.orgId,
         itemName: `Whitelabel HUD Parameters Updated`,
         quantity: 1,
         type: "ORG_CONFIG_CHANGE",
@@ -278,17 +294,18 @@ export async function submitOrgRequest(data: {
   contactInfo: string;
 }) {
   try {
-    const hashedPassword = data.adminPassword ? await bcrypt.hash(data.adminPassword, 10) : null;
+    const validated = submitOrgRequestSchema.parse(data);
+    const hashedPassword = validated.adminPassword ? await bcrypt.hash(validated.adminPassword, 10) : null;
 
     // This is public, no auth check needed
     const request = await prisma.orgRequest.create({
       data: {
-        name: data.name,
-        slug: data.slug,
-        requesterName: data.requesterName,
-        adminUsername: data.requesterName.replace(/\s+/g, '').toUpperCase(),
+        name: validated.name,
+        slug: validated.slug,
+        requesterName: validated.requesterName,
+        adminUsername: validated.requesterName.replace(/\s+/g, '').toUpperCase(),
         adminPassword: hashedPassword,
-        contactInfo: data.contactInfo,
+        contactInfo: validated.contactInfo,
         status: "PENDING"
       }
     });
@@ -296,7 +313,7 @@ export async function submitOrgRequest(data: {
     // Global Log for Org Request
     await prisma.distributionLog.create({
       data: {
-        itemName: `Org Signup Requested: ${data.name}`,
+        itemName: `Org Signup Requested: ${validated.name}`,
         quantity: 1,
         type: "ORG_REQUEST",
         method: "PUBLIC_SIGNUP",
@@ -315,9 +332,10 @@ export async function submitOrgRequest(data: {
 
 export async function approveOrgRequest(requestId: string) {
   try {
+    const validated = approveOrgRequestSchema.parse({ requestId });
     const superAdmin = await requireSuperAdmin();
     const request = await prisma.orgRequest.findUnique({
-      where: { id: requestId }
+      where: { id: validated.requestId }
     });
 
     if (!request) throw new Error("Request not found");
@@ -338,7 +356,7 @@ export async function approveOrgRequest(requestId: string) {
 
     // 2. Update the request record status for history
     await prisma.orgRequest.update({
-      where: { id: requestId },
+      where: { id: validated.requestId },
       data: { status: "APPROVED" }
     });
 
@@ -367,17 +385,18 @@ export async function approveOrgRequest(requestId: string) {
 
 export async function rejectOrgRequest(requestId: string) {
   try {
+    const validated = rejectOrgRequestSchema.parse({ requestId });
     const superAdmin = await requireSuperAdmin();
-    const request = await prisma.orgRequest.findUnique({ where: { id: requestId } });
+    const request = await prisma.orgRequest.findUnique({ where: { id: validated.requestId } });
 
     await prisma.orgRequest.update({
-      where: { id: requestId },
+      where: { id: validated.requestId },
       data: { status: "REJECTED" }
     });
 
     await prisma.distributionLog.create({
       data: {
-        itemName: `Integration Rejected: ${request?.name || requestId}`,
+        itemName: `Integration Rejected: ${request?.name || validated.requestId}`,
         quantity: 1,
         type: "ORG_REJECTED",
         method: "NEXUS_ACTION",

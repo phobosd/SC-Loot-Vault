@@ -15,7 +15,8 @@ export async function GET() {
 
   if (orgId) {
     org = await prisma.org.findUnique({
-      where: { id: orgId }
+      where: { id: orgId },
+      select: { name: true }
     });
   }
 

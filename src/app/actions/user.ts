@@ -6,20 +6,28 @@ import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { requireAdmin, requireSuperAdmin } from "@/lib/auth-checks";
 
+import { 
+  createUserSchema, 
+  updateUserSchema, 
+  updateUserRoleSchema,
+  deleteUserSchema
+} from "@/lib/validations";
+
 export async function updateUserRole(userId: string, role: Role) {
   try {
+    const validated = updateUserRoleSchema.parse({ userId, role });
     const admin = await requireAdmin();
     // Ideally we should also check if the user belongs to the admin's org, but for now we rely on the UI hiding users from other orgs for non-superadmins.
     const user = await prisma.user.update({
-      where: { id: userId },
-      data: { role },
+      where: { id: validated.userId },
+      data: { role: validated.role },
     });
 
     await prisma.distributionLog.create({
       data: {
         orgId: user.orgId || null,
         recipientId: user.id,
-        itemName: `Security Role Updated: ${role}`,
+        itemName: `Security Role Updated: ${validated.role}`,
         quantity: 1,
         type: "USER_ROLE_CHANGE",
         method: "ADMIN_ACTION",
@@ -37,20 +45,21 @@ export async function updateUserRole(userId: string, role: Role) {
 
 export async function deleteUser(userId: string) {
   try {
+    const validated = deleteUserSchema.parse({ userId });
     const admin = await requireAdmin();
     const user = await prisma.user.findUnique({ 
-      where: { id: userId },
+      where: { id: validated.userId },
       include: { org: { select: { name: true } } }
     });
     
     await prisma.user.delete({
-      where: { id: userId },
+      where: { id: validated.userId },
     });
 
     await prisma.distributionLog.create({
       data: {
         orgId: null, // Global system log
-        itemName: `Personnel Decommissioned: ${user?.name || user?.username || userId} (Org: ${user?.org?.name || 'NEXUS'})`,
+        itemName: `Personnel Decommissioned: ${user?.name || user?.username || validated.userId} (Org: ${user?.org?.name || 'NEXUS'})`,
         quantity: 1,
         type: "USER_DELETED",
         method: "ADMIN_ACTION",
@@ -65,8 +74,6 @@ export async function deleteUser(userId: string) {
     return { success: false, error: error.message };
   }
 }
-
-import { createUserSchema, updateUserSchema } from "@/lib/validations";
 
 export async function createUser(data: {
   username?: string;

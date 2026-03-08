@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperAdmin } from "@/lib/auth-checks";
+import { allianceOverrideSchema } from "@/lib/validations";
 
 export async function sendAllianceRequest(targetOrgId: string) {
   try {
@@ -218,42 +219,43 @@ export async function breakAlliance(allyId: string) {
 
 export async function adminCreateAlliance(org1Id: string, org2Id: string) {
   try {
+    const validated = allianceOverrideSchema.parse({ org1Id, org2Id });
     const admin = await requireSuperAdmin();
 
     const [org1, org2] = await Promise.all([
-      prisma.org.findUnique({ where: { id: org1Id }, select: { name: true } }),
-      prisma.org.findUnique({ where: { id: org2Id }, select: { name: true } })
+      prisma.org.findUnique({ where: { id: validated.org1Id }, select: { name: true } }),
+      prisma.org.findUnique({ where: { id: validated.org2Id }, select: { name: true } })
     ]);
 
     if (!org1 || !org2) throw new Error("Target organization not found.");
-    if (org1Id === org2Id) throw new Error("Cannot ally an organization with itself.");
+    if (validated.org1Id === validated.org2Id) throw new Error("Cannot ally an organization with itself.");
 
     await prisma.$transaction(async (tx) => {
       // 1. Clear any existing requests to prevent unique constraint conflicts
       await tx.allianceRequest.deleteMany({
         where: {
           OR: [
-            { senderOrgId: org1Id, targetOrgId: org2Id },
-            { senderOrgId: org2Id, targetOrgId: org1Id }
+            { senderOrgId: validated.org1Id, targetOrgId: validated.org2Id },
+            { senderOrgId: validated.org2Id, targetOrgId: validated.org1Id }
           ]
         }
       });
       // 2. Establish bi-directional alliance
       await tx.alliance.upsert({
-        where: { orgId_allyId: { orgId: org1Id, allyId: org2Id } },
+        where: { orgId_allyId: { orgId: validated.org1Id, allyId: validated.org2Id } },
         update: {},
-        create: { orgId: org1Id, allyId: org2Id }
+        create: { orgId: validated.org1Id, allyId: validated.org2Id }
       });
       await tx.alliance.upsert({
-        where: { orgId_allyId: { orgId: org2Id, allyId: org1Id } },
+        where: { orgId_allyId: { orgId: validated.org2Id, allyId: validated.org1Id } },
         update: {},
-        create: { orgId: org2Id, allyId: org1Id }
+        create: { orgId: validated.org2Id, allyId: validated.org1Id }
       });
       // 3. Log the override for both sides and system-wide
       await tx.distributionLog.createMany({
         data: [
           {
-            orgId: org1Id,
+            orgId: validated.org1Id,
             itemName: `Diplomatic Link Established: ${org2.name}`,
             quantity: 1,
             type: "ALLIANCE_CREATED",
@@ -261,7 +263,7 @@ export async function adminCreateAlliance(org1Id: string, org2Id: string) {
             performedBy: admin.username || "SUPERADMIN"
           },
           {
-            orgId: org2Id,
+            orgId: validated.org2Id,
             itemName: `Diplomatic Link Established: ${org1.name}`,
             quantity: 1,
             type: "ALLIANCE_CREATED",
@@ -290,19 +292,20 @@ export async function adminCreateAlliance(org1Id: string, org2Id: string) {
 
 export async function adminDeleteAlliance(org1Id: string, org2Id: string) {
   try {
+    const validated = allianceOverrideSchema.parse({ org1Id, org2Id });
     const admin = await requireSuperAdmin();
 
     const [org1, org2] = await Promise.all([
-      prisma.org.findUnique({ where: { id: org1Id }, select: { name: true } }),
-      prisma.org.findUnique({ where: { id: org2Id }, select: { name: true } })
+      prisma.org.findUnique({ where: { id: validated.org1Id }, select: { name: true } }),
+      prisma.org.findUnique({ where: { id: validated.org2Id }, select: { name: true } })
     ]);
 
     await prisma.$transaction(async (tx) => {
       await tx.alliance.deleteMany({
         where: {
           OR: [
-            { orgId: org1Id, allyId: org2Id },
-            { orgId: org2Id, allyId: org1Id }
+            { orgId: validated.org1Id, allyId: validated.org2Id },
+            { orgId: validated.org2Id, allyId: validated.org1Id }
           ]
         }
       });
@@ -310,8 +313,8 @@ export async function adminDeleteAlliance(org1Id: string, org2Id: string) {
       await tx.allianceRequest.deleteMany({
         where: {
           OR: [
-            { senderOrgId: org1Id, targetOrgId: org2Id },
-            { senderOrgId: org2Id, targetOrgId: org1Id }
+            { senderOrgId: validated.org1Id, targetOrgId: validated.org2Id },
+            { senderOrgId: validated.org2Id, targetOrgId: validated.org1Id }
           ],
           status: "APPROVED"
         }
@@ -320,16 +323,16 @@ export async function adminDeleteAlliance(org1Id: string, org2Id: string) {
       await tx.distributionLog.createMany({
         data: [
           {
-            orgId: org1Id,
-            itemName: `Diplomatic Link Terminated: ${org2?.name || org2Id}`,
+            orgId: validated.org1Id,
+            itemName: `Diplomatic Link Terminated: ${org2?.name || validated.org2Id}`,
             quantity: 1,
             type: "ALLIANCE_BROKEN",
             method: "ROOT_OVERRIDE",
             performedBy: admin.username || "SUPERADMIN"
           },
           {
-            orgId: org2Id,
-            itemName: `Diplomatic Link Terminated: ${org1?.name || org1Id}`,
+            orgId: validated.org2Id,
+            itemName: `Diplomatic Link Terminated: ${org1?.name || validated.org1Id}`,
             quantity: 1,
             type: "ALLIANCE_BROKEN",
             method: "ROOT_OVERRIDE",
@@ -337,7 +340,7 @@ export async function adminDeleteAlliance(org1Id: string, org2Id: string) {
           },
           {
             orgId: null,
-            itemName: `Diplomatic Link Terminated: ${org1?.name || org1Id} <-> ${org2?.name || org2Id}`,
+            itemName: `Diplomatic Link Terminated: ${org1?.name || validated.org1Id} <-> ${org2?.name || validated.org2Id}`,
             quantity: 1,
             type: "ALLIANCE_BROKEN",
             method: "ROOT_OVERRIDE",

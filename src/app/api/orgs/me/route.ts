@@ -13,7 +13,19 @@ export async function GET() {
 
   const org = await prisma.org.findUnique({
     where: { id: session.user.orgId },
-    include: { 
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      logoUrl: true,
+      primaryColor: true,
+      accentColor: true,
+      secondaryColor: true,
+      successColor: true,
+      dangerColor: true,
+      textColor: true,
+      discordBotLastSeen: true,
+      discordGuildId: true,
       whitelabelConfig: true,
       _count: {
         select: {
@@ -24,11 +36,6 @@ export async function GET() {
       }
     }
   });
-
-  if (org) {
-    // Prevent sensitive token from reaching the client
-    (org as any).discordBotToken = undefined;
-  }
 
   return NextResponse.json(org);
 }

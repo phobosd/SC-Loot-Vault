@@ -3,6 +3,15 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAuth, requireOrgAccess } from "@/lib/auth-checks";
+import { 
+  createLootSessionSchema, 
+  assignItemToOperatorSchema, 
+  recordDistributionSchema,
+  startGlobalSpinSchema,
+  finalizeGlobalSessionSchema,
+  resetGlobalSessionSchema,
+  archiveGlobalSessionSchema
+} from "@/lib/validations";
 
 export async function assignItemToOperator(data: {
   orgId: string;
@@ -13,38 +22,39 @@ export async function assignItemToOperator(data: {
   performedBy?: string;
 }) {
   try {
+    const validated = assignItemToOperatorSchema.parse(data);
     await requireAdmin();
-    await requireOrgAccess(data.orgId);
+    await requireOrgAccess(validated.orgId);
 
     const result = await prisma.$transaction(async (tx) => {
       const item = await tx.lootItem.findUnique({
-        where: { id: data.lootItemId }
+        where: { id: validated.lootItemId }
       });
 
-      if (!item || item.quantity < data.quantity || item.orgId !== data.orgId) {
+      if (!item || item.quantity < validated.quantity || item.orgId !== validated.orgId) {
         throw new Error("Insufficient manifest quantity or unauthorized.");
       }
 
       const log = await tx.distributionLog.create({
         data: {
-          orgId: data.orgId,
-          recipientId: data.recipientId,
-          itemName: data.itemName,
-          quantity: data.quantity,
+          orgId: validated.orgId,
+          recipientId: validated.recipientId,
+          itemName: validated.itemName,
+          quantity: validated.quantity,
           type: "ASSIGNED",
           method: "ADMIN_ASSIGN",
-          performedBy: data.performedBy,
+          performedBy: validated.performedBy,
         },
       });
 
-      if (item.quantity === data.quantity) {
+      if (item.quantity === validated.quantity) {
         await tx.lootItem.delete({
-          where: { id: data.lootItemId }
+          where: { id: validated.lootItemId }
         });
       } else {
         await tx.lootItem.update({
-          where: { id: data.lootItemId },
-          data: { quantity: { decrement: data.quantity } }
+          where: { id: validated.lootItemId },
+          data: { quantity: { decrement: validated.quantity } }
         });
       }
 
@@ -73,34 +83,35 @@ export async function recordDistribution(data: {
   lootItemId?: string;
 }) {
   try {
+    const validated = recordDistributionSchema.parse(data);
     await requireAdmin();
-    await requireOrgAccess(data.orgId);
+    await requireOrgAccess(validated.orgId);
 
     const result = await prisma.$transaction(async (tx) => {
       const log = await tx.distributionLog.create({
         data: {
-          orgId: data.orgId,
-          recipientId: data.recipientId || null,
-          itemName: data.itemName,
-          quantity: data.quantity,
-          type: data.type,
-          method: data.method,
-          performedBy: data.performedBy,
+          orgId: validated.orgId,
+          recipientId: validated.recipientId || null,
+          itemName: validated.itemName,
+          quantity: validated.quantity,
+          type: validated.type,
+          method: validated.method,
+          performedBy: validated.performedBy,
         },
       });
 
-      if (data.lootItemId) {
+      if (validated.lootItemId) {
         const item = await tx.lootItem.findUnique({
-          where: { id: data.lootItemId }
+          where: { id: validated.lootItemId }
         });
 
-        if (item && item.orgId === data.orgId) {
-          if (item.quantity <= data.quantity) {
-            await tx.lootItem.delete({ where: { id: data.lootItemId } });
+        if (item && item.orgId === validated.orgId) {
+          if (item.quantity <= validated.quantity) {
+            await tx.lootItem.delete({ where: { id: validated.lootItemId } });
           } else {
             await tx.lootItem.update({
-              where: { id: data.lootItemId },
-              data: { quantity: { decrement: data.quantity } }
+              where: { id: validated.lootItemId },
+              data: { quantity: { decrement: validated.quantity } }
             });
           }
         }
@@ -130,28 +141,29 @@ export async function createLootSession(data: {
   mode?: string;
 }) {
   try {
+    const validatedData = createLootSessionSchema.parse(data);
     const admin = await requireAdmin();
-    const isGlobal = data.orgId === "GLOBAL" || (admin.role === "SUPERADMIN" && !admin.orgId);
+    const isGlobal = validatedData.orgId === "GLOBAL" || (admin.role === "SUPERADMIN" && !admin.orgId);
     
     if (!isGlobal) {
-      await requireOrgAccess(data.orgId);
+      await requireOrgAccess(validatedData.orgId);
     }
 
     const items = await prisma.lootItem.findMany({
-      where: { id: { in: data.itemIds } }
+      where: { id: { in: validatedData.itemIds } }
     });
 
-    if (items.length !== data.itemIds.length) {
-       throw new Error(`Verification failure: Requested ${data.itemIds.length} assets, found ${items.length}.`);
+    if (items.length !== validatedData.itemIds.length) {
+       throw new Error(`Verification failure: Requested ${validatedData.itemIds.length} assets, found ${items.length}.`);
     }
 
     const session = await prisma.lootSession.create({
       data: {
-        orgId: isGlobal ? null : data.orgId,
-        title: data.title,
+        orgId: isGlobal ? null : validatedData.orgId,
+        title: validatedData.title,
         status: "ACTIVE",
-        type: data.type || "REEL",
-        mode: data.mode || "OPERATORS",
+        type: validatedData.type || "REEL",
+        mode: validatedData.mode || "OPERATORS",
         items: {
           create: items.map(item => ({
             itemId: item.id,
@@ -161,7 +173,7 @@ export async function createLootSession(data: {
           }))
         },
         participants: {
-          create: data.participantIds.map(userId => ({
+          create: validatedData.participantIds.map(userId => ({
             userId
           }))
         }
@@ -170,9 +182,9 @@ export async function createLootSession(data: {
 
     await prisma.distributionLog.create({
       data: {
-        orgId: isGlobal ? null : data.orgId,
-        itemName: `Dispatch sequence initialized: ${data.title} (${data.mode || 'OPERATORS'})`,
-        quantity: data.participantIds.length,
+        orgId: isGlobal ? null : validatedData.orgId,
+        itemName: `Dispatch sequence initialized: ${validatedData.title} (${validatedData.mode || 'OPERATORS'})`,
+        quantity: validatedData.participantIds.length,
         type: "DISPATCH_START",
         method: "ADMIN_ACTION",
         performedBy: admin.username || "ADMIN"
@@ -190,9 +202,10 @@ export async function createLootSession(data: {
 
 export async function startGlobalSpin(sessionId: string) {
   try {
+    const validated = startGlobalSpinSchema.parse({ sessionId });
     const admin = await requireAdmin();
     const session = await prisma.lootSession.findUnique({
-      where: { id: sessionId },
+      where: { id: validated.sessionId },
       include: { participants: true, items: true }
     });
 
@@ -216,7 +229,7 @@ export async function startGlobalSpin(sessionId: string) {
     const targetIndex = 50 + Math.floor(Math.random() * 10);
     
     await prisma.lootSession.update({
-      where: { id: sessionId },
+      where: { id: validated.sessionId },
       data: {
         status: "SPINNING",
         currentWinnerId,
@@ -224,7 +237,7 @@ export async function startGlobalSpin(sessionId: string) {
       }
     });
 
-    revalidatePath(`/dispatch/${sessionId}`);
+    revalidatePath(`/dispatch/${validated.sessionId}`);
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -233,9 +246,10 @@ export async function startGlobalSpin(sessionId: string) {
 
 export async function finalizeGlobalSession(sessionId: string) {
   try {
+    const validated = finalizeGlobalSessionSchema.parse({ sessionId });
     const admin = await requireAdmin();
     const session = await prisma.lootSession.findUnique({
-      where: { id: sessionId },
+      where: { id: validated.sessionId },
       include: { participants: { include: { user: true } }, items: true }
     });
 
@@ -284,7 +298,7 @@ export async function finalizeGlobalSession(sessionId: string) {
 
       // 3. Decommission session
       await tx.lootSession.update({
-        where: { id: sessionId },
+        where: { id: validated.sessionId },
         data: { status: "COMPLETED" }
       });
     });
@@ -292,7 +306,7 @@ export async function finalizeGlobalSession(sessionId: string) {
     revalidatePath("/vault");
     revalidatePath("/assigned");
     revalidatePath("/logs");
-    revalidatePath(`/dispatch/${sessionId}`);
+    revalidatePath(`/dispatch/${validated.sessionId}`);
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -301,16 +315,17 @@ export async function finalizeGlobalSession(sessionId: string) {
 
 export async function resetGlobalSession(sessionId: string) {
   try {
+    const validated = resetGlobalSessionSchema.parse({ sessionId });
     await requireAdmin();
     await prisma.lootSession.update({
-      where: { id: sessionId },
+      where: { id: validated.sessionId },
       data: {
         status: "ACTIVE",
         currentWinnerId: null,
         animationState: null
       }
     });
-    revalidatePath(`/dispatch/${sessionId}`);
+    revalidatePath(`/dispatch/${validated.sessionId}`);
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -319,13 +334,14 @@ export async function resetGlobalSession(sessionId: string) {
 
 export async function archiveGlobalSession(sessionId: string) {
   try {
+    const validated = archiveGlobalSessionSchema.parse({ sessionId });
     await requireAdmin();
     await prisma.lootSession.update({
-      where: { id: sessionId },
+      where: { id: validated.sessionId },
       data: { status: "ARCHIVED" }
     });
     revalidatePath("/distributions");
-    revalidatePath(`/dispatch/${sessionId}`);
+    revalidatePath(`/dispatch/${validated.sessionId}`);
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

@@ -21,7 +21,7 @@ import {
   CheckCircle2
 } from "lucide-react";
 import axios from "axios";
-import { cn } from "@/lib/utils";
+import { cn, seededRandom } from "@/lib/utils";
 import { 
   startGlobalSpin, 
   resetGlobalSession, 
@@ -29,12 +29,6 @@ import {
   finalizeGlobalSession
 } from "@/app/actions/distribution";
 import { useRouter } from "next/navigation";
-
-// --- SEEDED RANDOM PROTOCOL ---
-function seededRandom(seed: number) {
-  const x = Math.sin(seed++) * 10000;
-  return x - Math.floor(x);
-}
 
 // --- MASTER RNG WHEEL COMPONENT (REPLICATED ACROSS ALL CLIENTS) ---
 function MasterRNGWheel({ participants, items, rotation, isSpinning, mode }: any) {

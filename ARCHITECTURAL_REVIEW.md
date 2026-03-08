@@ -44,11 +44,38 @@ This document outlines the identified refactoring, optimization, and security op
 
 ---
 
+## 4. 🧪 Verification & Quality Assurance (Testing Suite)
+
+### **H. Unit Testing (Logic & Utilities)**
+*   **Target:** Utility functions (`hexToRgb`, `seededRandom`), Zod schema validations, and UI-agnostic helpers.
+*   **Purpose:** Ensure core math and transformation logic remains consistent during future upgrades.
+
+### **I. Integration Testing (RBAC & Multi-Tenancy)**
+*   **Target:** Server Actions and API Routes.
+*   **Purpose:**
+    *   **RBAC Check:** Verify `MEMBER` cannot access `ADMIN` actions, and `ADMIN` cannot access `SUPERADMIN` actions.
+    *   **Isolation Check:** Force-test that Org A cannot view or modify Org B's assets, even with a valid session.
+    *   **Audit Check:** Confirm that every tested action generates the expected `DistributionLog` entry.
+
+### **J. RNG Protocol Testing (Synchronicity & Assignments)**
+*   **Target:** `startGlobalSpin` and `finalizeGlobalSession`.
+*   **Purpose:** 
+    *   Verify that "Winner takes ALL" correctly transfers the entire session manifest.
+    *   Verify that "Winner takes 1 ASSET" correctly identifies and transfers only the stopping item.
+    *   Ensure physical vault quantities are decremented exactly once per item won.
+
+### **K. Security Probe Testing (Field Redaction)**
+*   **Target:** API JSON responses.
+*   **Purpose:** Programmatically verify that no API route includes `password`, `discordBotToken`, or `googleSheetId` in its raw response payload.
+
+---
+
 ## 🚀 Proposed Implementation Sequence
 
-1.  **Phase 1 (Security):** Hardening all remaining server actions with Zod schemas.
-2.  **Phase 2 (Modularity):** Extracting the RNG Wheel and Manifest components into separate modules.
-3.  **Phase 3 (Optimization):** Indexing the database and refining the polling pulse.
+1.  **Phase 0 (Quality Control):** Establish the Vitest/Jest testing framework and implement core RBAC and Multi-tenancy integration tests.
+2.  **Phase 1 (Security):** Hardening all remaining server actions with Zod schemas and enforcing strict API field selection.
+3.  **Phase 2 (Modularity):** Extracting the RNG Wheel and Manifest components into separate modules.
+4.  **Phase 3 (Optimization):** Indexing the database and refining the polling pulse.
 
 ---
 
