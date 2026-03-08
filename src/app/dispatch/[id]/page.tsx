@@ -31,7 +31,7 @@ import {
 import { useRouter } from "next/navigation";
 import { MasterRNGWheel } from "@/components/distributions/master-rng-wheel";
 import { SessionManifest, WinnerHUD, CommandControls } from "@/components/distributions/session-ui";
-import { LootSession, User as NexusUser } from "@/lib/types";
+import { LootSession, User as NexusUser, LootSessionItem, LootSessionParticipant } from "@/lib/types";
 
 export default function DispatchOpeningPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -175,9 +175,14 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
             rawItem = pool[Math.floor(rand * pool.length)];
           }
 
-          const label = s.mode === "OPERATORS" 
-            ? (rawItem.user?.name || rawItem.user?.username || "OPERATOR")
-            : rawItem.name;
+          let label = "UNKNOWN";
+          if (s.mode === "OPERATORS") {
+            const participant = rawItem as LootSessionParticipant;
+            label = participant.user?.name || participant.user?.username || "OPERATOR";
+          } else {
+            const item = rawItem as LootSessionItem;
+            label = item.name;
+          }
           finalReel.push({ ...rawItem, label });
         }
         setReelItems(finalReel);
