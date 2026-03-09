@@ -39,7 +39,7 @@ This document provides the essential operational context, architectural blueprin
 - **Authentication:** External integrations use the `X-Nexus-Key` header for authentication.
 - **Management:** Org Admins generate and decommission keys via **Settings > API Uplink Management**. Superadmins have override authority via **Superadmin Dashboard**.
 - **Exposed Endpoints:**
-    - `api/org-inventory`: Vault manifest read-access.
+    - `api/org-inventory`: Vault manifest read-access (GET) and asset injection (POST).
     - `api/assignments`: Distribution history read-access.
     - `api/sc-items/search`: Master manifest utility access.
     - `api/events/[id]`: Live SSE stream access.

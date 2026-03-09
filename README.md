@@ -62,10 +62,16 @@ An immersive, high-tech Star Citizen Organization Loot Vault Manager. This platf
 - **Organization Isolation:** Multi-tenant architecture ensures data is strictly isolated between organization nodes.
 - **Input Hardening:** All telemetry inputs are validated via Zod to prevent malformed data injections.
 
-### 🤖 Discord Manifest Bridge
+### 📡 Discord Manifest Bridge
 - **Advanced Commands:** Supports both Prefix (`!vault`) and Slash (`/`) commands.
 - **Account Linking:** Tie Discord IDs to Vault Operator identities via `/link-account`.
-- **Remote Commands:** Access `/my-assets`, `/request-asset`, and `/vault-status` directly from your comms channel.
+- **Remote Commands:** Access `/my-assets`, `/request-asset`, `/vault-status` directly from your comms channel.
+
+### 🛰️ Public API & Integrations
+- **API Uplink Keys:** Generate secure keys to authorize external integrations.
+- **External Manifest Access:** Power your own recruitment site or org dashboard with live vault data.
+- **Real-Time Webhooks:** Listen to live distribution events via SSE.
+- **[View Full API Documentation →](API.md)**
 
 ---
 
