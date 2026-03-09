@@ -11,20 +11,20 @@ import {
   Check, 
   Users,
   Settings2,
-  X,
   ArrowRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LootItem } from "@/lib/types";
 
 interface DrawingAreaProps {
-  inventory: any[];
-  participants: any[];
+  inventory: LootItem[];
+  participants: { id: string; name: string; orgName?: string }[];
   orgId: string;
 }
 
 export function DrawingArea({ inventory, participants, orgId }: DrawingAreaProps) {
   const [drawingMode, setDrawingMode] = useState<"OPERATORS" | "ITEMS">("OPERATORS");
-  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [selectedItems, setSelectedItems] = useState<LootItem[]>([]);
   
   // Consolidated Personnel State
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
@@ -78,22 +78,12 @@ export function DrawingArea({ inventory, participants, orgId }: DrawingAreaProps
   const activeParticipants = participants.filter(p => selectedParticipantIds.includes(p.id));
   const targetUser = activeParticipants[0] || null;
 
-  const toggleItem = (item: any) => {
-    if (drawingMode === "OPERATORS") {
-      // One prize (can be a pool) for the winner
-      setSelectedItems(prev => {
-        const isSelected = prev.find(i => i.id === item.id);
-        if (isSelected) return prev.filter(i => i.id !== item.id);
-        return [...prev, item];
-      });
-    } else {
-      // Slices on the wheel
-      setSelectedItems(prev => {
-        const isSelected = prev.find(i => i.id === item.id);
-        if (isSelected) return prev.filter(i => i.id !== item.id);
-        return [...prev, item];
-      });
-    }
+  const toggleItem = (item: LootItem) => {
+    setSelectedItems(prev => {
+      const isSelected = prev.find(i => i.id === item.id);
+      if (isSelected) return prev.filter(i => i.id !== item.id);
+      return [...prev, item];
+    });
   };
 
   const handleWinIdentified = (winnerId: string) => {
@@ -293,7 +283,7 @@ export function DrawingArea({ inventory, participants, orgId }: DrawingAreaProps
                 <div className="grid grid-cols-2 gap-4">
                   <button 
                     onClick={confirmAssignment}
-                    className="py-4 bg-sc-green/20 hover:bg-sc-green/30 border border-sc-green/50 text-sc-green text-xs font-black uppercase tracking-widest transition-all rounded shadow-[0_0_20px_rgba(0,255,194,0.1)]"
+                    className="py-4 bg-sc-green/20 hover:bg-sc-green/30 border border-sc-green/50 text-sc-green text-xs font-black uppercase tracking-widest transition-all rounded shadow-[0_0_20px_rgba(0,209,255,0.1)]"
                   >
                     Confirm & Sync
                   </button>

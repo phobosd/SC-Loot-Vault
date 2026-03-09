@@ -13,10 +13,11 @@ import {
 } from "lucide-react";
 import { createApiKey, deleteApiKey } from "@/app/actions/api-key";
 import { cn } from "@/lib/utils";
+import { ApiKey } from "@/lib/types";
 
 interface ApiKeyManagerProps {
   orgId: string;
-  keys: any[];
+  keys: ApiKey[];
 }
 
 export function ApiKeyManager({ orgId, keys }: ApiKeyManagerProps) {

@@ -73,7 +73,7 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
         setReelItems([]);
         setRotation(0);
       } else if (s.status === "COMPLETED" || (s.status === "SPINNING" && localStatus === "COMPLETED")) {
-        const participant = s.participants.find((p: any) => p.userId === s.currentWinnerId);
+        const participant = s.participants?.find((p: any) => p.userId === s.currentWinnerId);
         if (participant?.user) setWinnerUser(participant.user as NexusUser);
         
         if (s.animationState) {
@@ -86,10 +86,10 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
         if (s.type === "WHEEL" && rotation === 0 && s.currentWinnerId) {
           const pool = s.mode === "OPERATORS" ? s.participants : s.items;
           const winnerIndex = s.mode === "OPERATORS" 
-            ? s.participants.findIndex((p: any) => p.userId === s.currentWinnerId)
-            : s.items.findIndex((i: any) => i.name === winningItem);
+            ? s.participants?.findIndex((p: any) => p.userId === s.currentWinnerId)
+            : s.items?.findIndex((i: any) => i.name === winningItem);
 
-          if (winnerIndex !== -1) {
+          if (winnerIndex !== -1 && winnerIndex !== undefined && pool) {
             const sliceSize = 360 / pool.length;
             setRotation((5 * 360) + (360 - (winnerIndex * sliceSize)) - (sliceSize / 2));
           }
@@ -162,8 +162,8 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
         
         // Find the actual winner profile/item to inject at targetIdx
         const winner = s.mode === "OPERATORS"
-          ? s.participants.find((p: any) => p.userId === s.currentWinnerId)
-          : s.items.find((i: any) => i.name === animData.winningItemName);
+          ? s.participants?.find((p: any) => p.userId === s.currentWinnerId)
+          : s.items?.find((i: any) => i.name === animData.winningItemName);
 
         for (let i = 0; i <= targetIdx + 10; i++) {
           const rand = seededRandom(seed++);
@@ -171,28 +171,30 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
           
           if (i === targetIdx && winner) {
             rawItem = winner;
-          } else {
+          } else if (pool) {
             rawItem = pool[Math.floor(rand * pool.length)];
           }
 
-          let label = "UNKNOWN";
-          if (s.mode === "OPERATORS") {
-            const participant = rawItem as LootSessionParticipant;
-            label = participant.user?.name || participant.user?.username || "OPERATOR";
-          } else {
-            const item = rawItem as LootSessionItem;
-            label = item.name;
+          if (rawItem) {
+            let label = "UNKNOWN";
+            if (s.mode === "OPERATORS") {
+              const participant = rawItem as LootSessionParticipant;
+              label = participant.user?.name || participant.user?.username || "OPERATOR";
+            } else {
+              const item = rawItem as LootSessionItem;
+              label = item.name;
+            }
+            finalReel.push({ ...rawItem, label });
           }
-          finalReel.push({ ...rawItem, label });
         }
         setReelItems(finalReel);
       } else {
         const pool = s.mode === "OPERATORS" ? s.participants : s.items;
         const winnerIndex = s.mode === "OPERATORS"
-          ? s.participants.findIndex((p: any) => p.userId === s.currentWinnerId)
-          : s.items.findIndex((i: any) => i.name === animData.winningItemName);
+          ? s.participants?.findIndex((p: any) => p.userId === s.currentWinnerId)
+          : s.items?.findIndex((i: any) => i.name === animData.winningItemName);
 
-        if (winnerIndex !== -1) {
+        if (winnerIndex !== -1 && winnerIndex !== undefined && pool) {
           const sliceSize = 360 / pool.length;
           const targetRotation = (5 * 360) + (360 - (winnerIndex * sliceSize)) - (sliceSize / 2);
           setRotation(targetRotation);
@@ -201,7 +203,7 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
     }, 50);
 
     setTimeout(() => {
-      const participant = s.participants.find((p: any) => p.userId === s.currentWinnerId);
+      const participant = s.participants?.find((p: any) => p.userId === s.currentWinnerId);
       if (participant?.user) setWinnerUser(participant.user as NexusUser);
       setLocalStatus("COMPLETED");
     }, 7050);
@@ -251,7 +253,7 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
               transitionTimingFunction: localStatus === "SPINNING" ? 'cubic-bezier(0.15, 0, 0.15, 1)' : 'ease-out'
             }}
           >
-            {(reelItems.length > 0 ? reelItems : (session.mode === "OPERATORS" ? session.participants : session.items)).map((item: any, i: number) => (
+            {(reelItems.length > 0 ? reelItems : (session.mode === "OPERATORS" ? (session.participants || []) : (session.items || []))).map((item: any, i: number) => (
               <div key={i} className="w-36 h-36 flex-shrink-0 sc-glass border-white/10 bg-black/40 p-4 flex flex-col items-center justify-center text-center transition-all group">
                 <div className="w-16 h-16 rounded bg-sc-blue/5 border border-sc-blue/20 flex items-center justify-center mb-3 group-hover:border-sc-blue/50">
                   {session.mode === "OPERATORS" ? <Users className="w-8 h-8 text-sc-blue/40" /> : <Box className="w-8 h-8 text-sc-blue/40" />}
@@ -262,7 +264,7 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
       ) : (
-        <MasterRNGWheel participants={session.participants} items={session.items} rotation={rotation} isSpinning={localStatus === "SPINNING"} mode={session.mode} />
+        <MasterRNGWheel participants={session.participants || []} items={session.items || []} rotation={rotation} isSpinning={localStatus === "SPINNING"} mode={session.mode as "OPERATORS" | "ITEMS"} />
       )}
 
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
@@ -270,8 +272,8 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
           {localStatus === "COMPLETED" && winnerUser ? (
             <WinnerHUD 
               winnerUser={winnerUser}
-              sessionMode={session.mode}
-              itemCount={session.items.length}
+              sessionMode={session.mode as "OPERATORS" | "ITEMS"}
+              itemCount={session.items?.length || 0}
               winningItemName={winningItem}
               isAdmin={isAdmin}
               sessionStatus={session.status}
@@ -280,7 +282,7 @@ export default function DispatchOpeningPage({ params }: { params: Promise<{ id: 
               onFinalize={handleFinalize}
             />
           ) : (
-            <SessionManifest items={session.items} />
+            <SessionManifest items={session.items || []} />
           )}
         </div>
 

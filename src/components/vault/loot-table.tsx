@@ -15,16 +15,17 @@ import { cn } from "@/lib/utils";
 import { ItemDetailsModal } from "@/components/shared/item-details-modal";
 import { useSession } from "next-auth/react";
 import { Search, Filter, ArrowUpDown } from "lucide-react";
+import { LootItem, User as NexusUser } from "@/lib/types";
 
 interface LootTableProps {
-  items: any[];
+  items: LootItem[];
   orgId: string;
   isAlliedView?: boolean;
   targetOrgId?: string;
 }
 
 export function LootTable({ items, orgId, isAlliedView, targetOrgId }: LootTableProps) {
-  const { data: session }: any = useSession();
+  const { data: session } = useSession() as { data: { user: NexusUser } | null };
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDeleting, setIsSubmitting] = useState(false);
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
@@ -47,8 +48,8 @@ export function LootTable({ items, orgId, isAlliedView, targetOrgId }: LootTable
     setRequestingId(item.id);
     try {
       const res = await createLootRequest({
-        orgId: session.user.orgId, // Always request FOR current user's org
-        userId: session.user.id,
+        orgId: session.user.orgId || "", // Always request FOR current user's org
+        userId: session.user.id || "",
         itemId: item.id,
         itemName: item.name,
         category: item.category,

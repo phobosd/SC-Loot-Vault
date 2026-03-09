@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireAuth, requireOrgAccess } from "@/lib/auth-checks";
+import { requireAdmin, requireOrgAccess } from "@/lib/auth-checks";
 import { 
   createLootSessionSchema, 
   assignItemToOperatorSchema, 
@@ -204,7 +204,7 @@ export async function createLootSession(data: {
 export async function startGlobalSpin(sessionId: string) {
   try {
     const validated = startGlobalSpinSchema.parse({ sessionId });
-    const admin = await requireAdmin();
+    await requireAdmin();
     const session = await prisma.lootSession.findUnique({
       where: { id: validated.sessionId },
       include: { participants: true, items: true }

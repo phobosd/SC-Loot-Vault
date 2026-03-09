@@ -5,8 +5,6 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { 
   ShieldCheck, 
-  Gamepad2, 
-  ChevronRight,
   Lock,
   User as UserIcon,
   Loader2,
@@ -39,7 +37,7 @@ export default function LoginPage() {
         // Use hard reload to ensure session is picked up in iframe
         window.location.href = "/dashboard";
       }
-    } catch (err) {
+    } catch {
       setError("Link failure. Database unreachable.");
       setLoading(false);
     }
@@ -112,25 +110,6 @@ export default function LoginPage() {
               Initialize Session
             </button>
           </form>
-
-          {/* Discord OAuth hidden for now
-          <div className="relative flex items-center py-2">
-            <div className="flex-grow border-t border-white/5"></div>
-            <span className="flex-shrink mx-4 text-[8px] font-mono text-gray-600 uppercase tracking-widest">OR EXTERNAL LINK</span>
-            <div className="flex-grow border-t border-white/5"></div>
-          </div>
-
-          <button 
-            onClick={() => signIn("discord", { callbackUrl: "/dashboard" })}
-            className="w-full flex items-center justify-between px-6 py-4 bg-[#5865F2]/10 hover:bg-[#5865F2]/20 border border-[#5865F2]/30 text-white rounded transition-all group"
-          >
-            <div className="flex items-center gap-4">
-              <Gamepad2 className="w-5 h-5 text-[#5865F2]" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Link via Discord Node</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-white/30 group-hover:text-white transition-colors" />
-          </button>
-          */}
         </div>
 
         <div className="text-center space-y-4">

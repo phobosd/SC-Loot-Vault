@@ -1,23 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { 
-  RotateCw, 
-  History, 
-  Settings,
-  AlertTriangle,
-  Info,
-  Zap,
-  ChevronRight
-} from "lucide-react";
-import { DrawingArea } from "@/components/distributions/drawing-area";
-import { CreateSessionDialog } from "@/components/distributions/create-session-dialog";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { DistributionClientWrapper } from "@/components/distributions/distribution-client-wrapper";
-import Link from "next/link";
+import { User as NexusUser } from "@/lib/types";
 
 export default async function DistributionsPage() {
-  const session: any = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions) as { user: NexusUser } | null;
   
   if (!session?.user) {
     redirect("/login");
@@ -29,7 +18,7 @@ export default async function DistributionsPage() {
     redirect("/dashboard");
   }
 
-  const org = await prisma.org.findUnique({ where: { id: session.user.orgId } });
+  const org = await prisma.org.findUnique({ where: { id: session.user.orgId || undefined } });
   if (!org) return <div>No Org context.</div>;
 
   const [inventory, recentLogs, localUsers, alliances] = await Promise.all([
@@ -97,7 +86,7 @@ export default async function DistributionsPage() {
       inventory={inventory}
       recentLogs={recentLogs}
       allUsers={allEligibleParticipants}
-      userRole={session.user.role}
+      userRole={session.user.role || 'MEMBER'}
       initialActiveSessions={activeSessions}
     />
   );

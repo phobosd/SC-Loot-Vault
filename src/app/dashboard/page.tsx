@@ -7,27 +7,26 @@ import {
   Users, 
   UserPlus,
   Zap,
-  Box,
   Cpu,
   Trophy,
-  ArrowRight,
-  Plus
+  ArrowRight
 } from "lucide-react";
 import { LootRequestManager } from "@/components/dashboard/loot-request-manager";
 import { AddItemDialog } from "@/components/vault/add-item-dialog";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { User as NexusUser } from "@/lib/types";
 
 export default async function Dashboard() {
-  const session: any = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions) as { user: NexusUser } | null;
   
   if (!session?.user) {
     redirect("/login");
   }
 
   const org = session.user.orgId 
-    ? await prisma.org.findUnique({ where: { id: session.user.orgId } })
+    ? await prisma.org.findUnique({ where: { id: session.user.orgId || undefined } })
     : null;
 
   const isGlobalAdmin = session.user.role === 'SUPERADMIN' && !session.user.orgId;
@@ -118,7 +117,7 @@ export default async function Dashboard() {
               <p className="text-sm font-bold text-white uppercase">{pendingUsers} operator designation(s) awaiting approval</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-black text-sc-blue uppercase tracking-widest group-hover:gap-4 transition-all">
+          <div className="flex items-center gap-2 text-[10px] font-black text-sc-gold uppercase tracking-widest group-hover:gap-4 transition-all">
             Review Personnel <ArrowRight className="w-4 h-4" />
           </div>
         </Link>
@@ -160,7 +159,7 @@ export default async function Dashboard() {
                 <div key={log.id} className="flex items-center justify-between py-3 border-b border-white/5 hover:bg-white/5 px-2 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className="w-8 h-8 bg-sc-blue/10 border border-sc-blue/30 flex items-center justify-center rounded">
-                      <Box className="w-4 h-4 text-sc-blue/80" />
+                      <Package className="w-4 h-4 text-sc-blue/80" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-white">{log.itemName}</p>

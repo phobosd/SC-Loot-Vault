@@ -49,7 +49,7 @@ export async function sendAllianceRequest(targetOrgId: string) {
     revalidatePath("/logs");
     revalidatePath("/dashboard");
     return { success: true, request };
-  } catch (err: any) {
+  } catch {
     return { success: false, error: "Protocol Error: Handshake already in progress." };
   }
 }

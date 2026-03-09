@@ -4,18 +4,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { 
-  Users, 
-  ShieldCheck, 
-  MessageSquare, 
-  Clock, 
-  X, 
-  Check, 
   ShieldAlert,
-  Handshake,
-  Globe,
-  Plus
+  Handshake
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { AllianceManagerUI } from "@/components/alliances/alliance-manager-ui";
 import { SuperAdminAllianceManagerUI } from "@/components/superadmin/superadmin-alliance-manager-ui";
 

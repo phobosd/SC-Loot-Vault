@@ -13,12 +13,18 @@ interface MasterRNGWheelProps {
   mode: "OPERATORS" | "ITEMS";
 }
 
+interface Segment {
+  pathData: string;
+  label: string;
+  midAngle: number;
+}
+
 export function MasterRNGWheel({ participants, items, rotation, isSpinning, mode }: MasterRNGWheelProps) {
-  const segments = useMemo(() => {
+  const segments = useMemo<Segment[]>(() => {
     const pool = mode === "OPERATORS" ? participants : items;
     if (!pool || pool.length === 0) return [];
 
-    return pool.map((p: any, i: number) => {
+    return (pool as (LootSessionParticipant | LootSessionItem)[]).map((p, i: number) => {
       const angle = 360 / pool.length;
       const startAngle = i * angle;
       const endAngle = (i + 1) * angle;
@@ -30,9 +36,14 @@ export function MasterRNGWheel({ participants, items, rotation, isSpinning, mode
       const largeArcFlag = angle > 180 ? 1 : 0;
       const pathData = `M 100 100 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
       
-      const label = mode === "OPERATORS" 
-        ? (p.user?.name || p.user?.username || "OPERATOR")
-        : p.name;
+      let label = "UNKNOWN";
+      if (mode === "OPERATORS") {
+        const participant = p as LootSessionParticipant;
+        label = participant.user?.name || participant.user?.username || "OPERATOR";
+      } else {
+        const item = p as LootSessionItem;
+        label = item.name;
+      }
 
       return { pathData, label, midAngle: startAngle + angle / 2 };
     });
@@ -62,7 +73,7 @@ export function MasterRNGWheel({ participants, items, rotation, isSpinning, mode
         }}
       >
         <svg viewBox="0 0 200 200" className="w-full h-full">
-          {segments.map((s: any, i: number) => (
+          {segments.map((s: Segment, i: number) => (
             <g key={i}>
               <path 
                 d={s.pathData} 

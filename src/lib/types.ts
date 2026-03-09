@@ -1,24 +1,30 @@
 import { Role } from "@prisma/client";
 
 export interface User {
-  id: string;
-  username: string | null;
+  id?: string;
+  username?: string | null;
   name: string | null;
-  email: string | null;
-  discordId: string | null;
-  role: Role;
-  status: string;
-  orgId: string | null;
-  org?: Org;
+  email?: string | null;
+  discordId?: string | null;
+  role?: Role;
+  status?: string;
+  image?: string | null;
+  orgId?: string | null;
+  org?: Org | null;
+  isImpersonating?: boolean;
 }
 
 export interface Org {
-  id: string;
+  id?: string;
   name: string;
-  slug: string;
-  logoUrl: string | null;
-  primaryColor: string;
-  accentColor: string;
+  slug?: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  accentColor?: string;
+  whitelabelConfig?: {
+    footerText?: string | null;
+    headerText?: string | null;
+  } | null;
 }
 
 export interface LootItem {
@@ -32,19 +38,24 @@ export interface LootItem {
   class: string | null;
   grade: string | null;
   manufacturer: string | null;
+  description?: string | null;
+  wikiId?: string | null;
+  type?: string | null;
+  subType?: string | null;
+  isOrgItem?: boolean;
 }
 
 export interface LootSession {
   id: string;
   orgId: string | null;
   title: string;
-  status: "ACTIVE" | "SPINNING" | "COMPLETED" | "ARCHIVED";
-  type: "REEL" | "WHEEL";
-  mode: "OPERATORS" | "ITEMS";
-  animationState: string | null;
-  currentWinnerId: string | null;
-  items: LootSessionItem[];
-  participants: LootSessionParticipant[];
+  status: string; // ACTIVE, SPINNING, COMPLETED, ARCHIVED
+  type: string;   // REEL, WHEEL
+  mode: string;   // OPERATORS, ITEMS
+  animationState?: string | null;
+  currentWinnerId?: string | null;
+  items?: LootSessionItem[];
+  participants?: LootSessionParticipant[];
 }
 
 export interface LootSessionItem {
@@ -63,4 +74,13 @@ export interface LootSessionParticipant {
   userId: string;
   user?: User;
   wonItemName: string | null;
+}
+
+export interface ApiKey {
+  id: string;
+  orgId: string;
+  key: string;
+  name: string;
+  createdAt: Date;
+  lastUsed: Date | null;
 }

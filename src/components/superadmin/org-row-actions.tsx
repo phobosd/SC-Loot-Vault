@@ -5,21 +5,17 @@ import {
   MoreVertical, 
   Trash2, 
   Loader2, 
-  Check, 
   Edit,
   X,
-  Palette,
-  Globe,
   Ghost,
-  ShieldCheck,
   Key
 } from "lucide-react";
 import { updateOrg, deleteOrg } from "@/app/actions/org";
-import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { createPortal } from "react-dom";
 import { ApiKeyManager } from "@/components/settings/api-key-manager";
+import { User as NexusUser, ApiKey } from "@/lib/types";
 
 interface OrgRowActionsProps {
   org: {
@@ -32,11 +28,11 @@ interface OrgRowActionsProps {
 }
 
 export function OrgRowActions({ org }: OrgRowActionsProps) {
-  const { update }: any = useSession();
+  const { update } = useSession() as { update: any };
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isKeysOpen, setIsKeysOpen] = useState(false);
-  const [orgKeys, setOrgKeys] = useState<any[]>([]);
+  const [orgKeys, setOrgKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -65,9 +61,9 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
     setLoading(true);
     try {
       const res = await axios.get(`/api/users?orgId=${org.id}`);
-      const users = res.data;
-      const lead = users.find((u: any) => u.role === 'SUPERADMIN') || 
-                   users.find((u: any) => u.role === 'ADMIN') ||
+      const users = res.data as NexusUser[];
+      const lead = users.find((u) => u.role === 'SUPERADMIN') || 
+                   users.find((u) => u.role === 'ADMIN') ||
                    users[0];
       
       if (lead) {
@@ -216,8 +212,7 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
               <div className="pt-4 flex gap-3">
                 <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-3 text-xs font-bold text-white uppercase border border-white/10 hover:bg-white/5 transition-colors rounded">Abort</button>
                 <button type="submit" disabled={loading} className="flex-[2] py-3 bg-sc-blue/20 hover:bg-sc-blue/30 border border-sc-blue/50 text-sc-blue text-xs font-black uppercase tracking-widest transition-all rounded flex items-center justify-center gap-2">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  Synchronize Node
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Synchronize Node"}
                 </button>
               </div>
             </form>

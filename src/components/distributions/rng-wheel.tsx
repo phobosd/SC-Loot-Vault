@@ -11,23 +11,31 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface Participant {
+  id: string;
+  name: string;
+}
+
 interface RNGWheelProps {
-  participants: { id: string; name: string }[];
+  participants: Participant[];
   itemToDistribute: { id: string; name: string } | null;
   onWin: (winnerId: string) => void;
   mode?: "OPERATORS" | "ITEMS";
 }
 
+interface Segment extends Participant {
+  pathData: string;
+  midAngle: number;
+}
+
 export function RNGWheel({ participants, itemToDistribute, onWin, mode = "OPERATORS" }: RNGWheelProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [winner, setWinner] = useState<{ id: string; name: string } | null>(null);
   
   const accentColor = mode === "OPERATORS" ? "var(--sc-blue)" : "var(--sc-gold)";
   const glowColor = mode === "OPERATORS" ? "rgba(var(--sc-blue-rgb), 0.3)" : "rgba(var(--sc-gold-rgb), 0.3)";
-  const pointerColor = mode === "OPERATORS" ? "bg-sc-gold" : "bg-sc-blue";
 
-  const segments = useMemo(() => {
+  const segments = useMemo<Segment[]>(() => {
     return participants.map((p, i) => {
       const angle = 360 / participants.length;
       const startAngle = i * angle;
@@ -50,7 +58,6 @@ export function RNGWheel({ participants, itemToDistribute, onWin, mode = "OPERAT
     if (isSpinning || participants.length === 0) return;
     
     setIsSpinning(true);
-    setWinner(null);
 
     const winnerIndex = Math.floor(Math.random() * participants.length);
     const degreesPerSegment = 360 / participants.length;
@@ -63,7 +70,6 @@ export function RNGWheel({ participants, itemToDistribute, onWin, mode = "OPERAT
     setTimeout(() => {
       setIsSpinning(false);
       const won = participants[winnerIndex];
-      setWinner(won);
       onWin(won.id);
     }, 6000);
   };

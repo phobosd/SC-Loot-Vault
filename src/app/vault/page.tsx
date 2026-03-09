@@ -1,9 +1,6 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { 
-  Search, 
-  Filter, 
-  ArrowUpDown, 
   Database,
   Handshake
 } from "lucide-react";
@@ -16,9 +13,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { User as NexusUser } from "@/lib/types";
 
 export default async function VaultPage({ searchParams }: { searchParams: Promise<{ allyId?: string }> }) {
-  const session: any = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions) as { user: NexusUser } | null;
   const { allyId } = await searchParams;
   
   if (!session?.user) {
@@ -50,7 +48,7 @@ export default async function VaultPage({ searchParams }: { searchParams: Promis
     org = await prisma.org.findUnique({ where: { id: allyId } });
   } else {
     org = session.user.orgId 
-      ? await prisma.org.findUnique({ where: { id: session.user.orgId } })
+      ? await prisma.org.findUnique({ where: { id: session.user.orgId || undefined } })
       : null;
   }
 

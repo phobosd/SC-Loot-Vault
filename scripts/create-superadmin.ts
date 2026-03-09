@@ -15,7 +15,7 @@ async function main() {
     return;
   }
 
-  const user = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { username },
     update: {
       password: hashedPassword,

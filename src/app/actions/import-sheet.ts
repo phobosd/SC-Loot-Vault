@@ -1,26 +1,8 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
 import Papa from "papaparse";
 import axios from "axios";
-
-import { requireAdmin, requireAuth, requireOrgAccess } from "@/lib/auth-checks";
-
-export async function importGoogleSheet(orgId: string, sheetUrl: string, gid: string = "1808617689") {
-  try {
-    await requireAdmin();
-    await requireOrgAccess(orgId);
-
-    // ... rest of logic
-  } catch (error: any) {
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      return { success: false, error: "Access Denied: The Google Sheet must be set to 'Anyone with the link can view'." };
-    }
-    console.error("Import error:", error);
-    return { success: false, error: error.message };
-  }
-}
+import { requireAuth } from "@/lib/auth-checks";
 
 export async function previewGoogleSheet(sheetUrl: string, gid: string = "1808617689") {
   try {

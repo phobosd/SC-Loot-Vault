@@ -13,11 +13,9 @@ import {
   Bot,
   ChevronRight,
   LogOut,
-  ShieldCheck,
   UserCheck,
   Building2,
   Ghost,
-  ShieldAlert,
   Handshake,
   Heart
 } from "lucide-react";
@@ -25,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { PriorityAlert } from "./priority-alert";
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { User as NexusUser, Org } from "@/lib/types";
 
 const menuItems = [
   { name: "Dashboard", href: "/dashboard", icon: Database },
@@ -43,8 +42,8 @@ const menuItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { data: session, update }: any = useSession();
-  const [org, setOrg] = useState<any>(null);
+  const { data: session, update } = useSession() as { data: { user: NexusUser } | null, update: any };
+  const [org, setOrg] = useState<Org | null>(null);
   const [counts, setCounts] = useState({
     pendingOrgRequests: 0,
     pendingUserRequests: 0,
@@ -112,7 +111,8 @@ export function Sidebar() {
       <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
           // Check role access
-          if (item.role && !item.role.includes(user?.role)) return null;
+          if (item.role && user?.role && !item.role.includes(user.role)) return null;
+          if (item.role && !user?.role) return null;
 
           const isActive = pathname === item.href;
           
@@ -141,7 +141,7 @@ export function Sidebar() {
                 {pendingCount > 0 && (
                   <span className={cn(
                     "flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-black text-black animate-pulse",
-                    item.name === "Galactic Nexus" || item.name === "Personnel" ? "bg-sc-gold shadow-[0_0_10px_rgba(224,177,48,0.5)]" : "bg-sc-gold shadow-[0_0_10px_rgba(224,177,48,0.5)]"
+                    "bg-sc-gold shadow-[0_0_10px_rgba(224,177,48,0.5)]"
                   )}>
                     {pendingCount}
                   </span>

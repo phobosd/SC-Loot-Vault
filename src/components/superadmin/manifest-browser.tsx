@@ -13,7 +13,6 @@ import {
   ChevronRight as ChevronRightIcon
 } from "lucide-react";
 import axios from "axios";
-import { cn } from "@/lib/utils";
 import { ItemDetailsModal } from "@/components/shared/item-details-modal";
 
 export function ManifestBrowser() {
@@ -23,18 +22,17 @@ export function ManifestBrowser() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [search, setSearch] = useState("");
-  const [type, setType] = useState("");
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
 
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`/api/sc-items?page=${page}&q=${search}&type=${type}&limit=50`);
+      const res = await axios.get(`/api/sc-items?page=${page}&q=${search}&limit=50`);
       setItems(res.data.items);
       setTotalPages(res.data.pages);
       setTotalItems(res.data.total);
     } catch (err) {
-      console.error(err);
+      console.error("Master Manifest Fetch Failed:", err);
     } finally {
       setLoading(false);
     }
@@ -45,7 +43,7 @@ export function ManifestBrowser() {
       fetchItems();
     }, 300);
     return () => clearTimeout(timer);
-  }, [page, search, type]);
+  }, [page, search]);
 
   const getItemIcon = (type: string) => {
     const t = type?.toLowerCase() || "";

@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireAuth, requireOrgAccess } from "@/lib/auth-checks";
+import { requireAdmin, requireAuth } from "@/lib/auth-checks";
 
 import { 
   addLootItemsSchema, 
@@ -59,7 +59,7 @@ export async function addLootItems(items: {
             subCategory: !item.subCategory ? (match.subType || null) : item.subCategory
           };
         }
-      } catch (e) {
+      } catch {
         console.error("Fuzzy enrichment failed for:", item.name);
       }
       return item;

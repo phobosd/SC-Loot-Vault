@@ -13,13 +13,13 @@ import {
   Activity,
   Maximize2,
   Users,
-  ChevronRight,
   UserPlus
 } from "lucide-react";
 import axios from "axios";
 import { cn } from "@/lib/utils";
 import { updateLootItem } from "@/app/actions/loot";
 import { assignItemToOperator } from "@/app/actions/distribution";
+import { LootItem, User as NexusUser } from "@/lib/types";
 
 interface ItemDetailsModalProps {
   itemId?: string | null;
@@ -30,7 +30,7 @@ interface ItemDetailsModalProps {
 }
 
 export function ItemDetailsModal({ itemId, itemName, onClose, orgId, isAlliedView }: ItemDetailsModalProps) {
-  const [item, setItem] = useState<any>(null);
+  const [item, setItem] = useState<LootItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   
@@ -38,7 +38,7 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId, isAlliedVie
   const [activeTab, setActiveTab] = useState<"info" | "dispatch">("info");
   const [qty, setQty] = useState(1);
   const [isActing, setIsActing] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<NexusUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");
 
   useEffect(() => {
@@ -62,17 +62,12 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId, isAlliedVie
     const fetchUsers = async () => {
       if (!orgId || isAlliedView) return;
       try {
-        // Fetch local users and allied users if applicable
-        const [localRes, allianceRes] = await Promise.all([
-          axios.get('/api/users'),
-          axios.get('/api/orgs/me') // Orgs/me now includes alliance data in some contexts, but let's be explicit
-        ]);
-        
-        // Let's assume we want to simplify and just fetch all eligible for this org
-        // I will update the users API to optionally include allies for superadmins/admins
+        // Fetch all eligible for this org (including allies)
         const res = await axios.get('/api/users?includeAllies=true');
         setUsers(res.data);
-      } catch (err) {}
+      } catch {
+        console.error("Failed to fetch personnel for assignment.");
+      }
     };
 
     fetchDetails();
@@ -82,16 +77,18 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId, isAlliedVie
   if (!itemId && !itemName) return null;
 
   const handleUpdateQty = async () => {
-    if (!item.isOrgItem || isAlliedView) return;
+    if (!item || !item.isOrgItem || isAlliedView) return;
     setIsActing(true);
     try {
       await updateLootItem(item.id, qty);
       onClose();
-    } catch (err) {} finally { setIsActing(false); }
+    } catch {
+      console.error("Inventory update failed.");
+    } finally { setIsActing(false); }
   };
 
   const handleAssign = async () => {
-    if (!selectedUserId || !orgId || isAlliedView) return;
+    if (!item || !selectedUserId || !orgId || isAlliedView) return;
     setIsActing(true);
     try {
       await assignItemToOperator({
@@ -102,7 +99,9 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId, isAlliedVie
         quantity: qty
       });
       onClose();
-    } catch (err) {} finally { setIsActing(false); }
+    } catch {
+      console.error("Assignment failed.");
+    } finally { setIsActing(false); }
   };
 
   const getItemIcon = (type: string) => {
@@ -121,7 +120,7 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId, isAlliedVie
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 sc-hud-corner flex items-center justify-center bg-sc-blue/5 border border-sc-blue/20">
-                {loading ? <Loader2 className="w-6 h-6 text-sc-blue animate-spin" /> : getItemIcon(item?.type)}
+                {loading ? <Loader2 className="w-6 h-6 text-sc-blue animate-spin" /> : getItemIcon(item?.type || "")}
               </div>
               <div>
                 <h2 className="text-xl font-black text-white uppercase tracking-[0.2em]">
@@ -180,14 +179,14 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId, isAlliedVie
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">Available Manifest</label>
-                      <p className="text-xl font-bold text-white font-mono">{item.quantity} units</p>
+                      <p className="text-xl font-bold text-white font-mono">{item?.quantity} units</p>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">Target Quantity</label>
                       <input 
                         type="number"
                         min="1"
-                        max={item.quantity}
+                        max={item?.quantity}
                         value={qty}
                         onChange={(e) => setQty(parseInt(e.target.value) || 1)}
                         className="w-full bg-black/40 border border-sc-gold/30 px-4 py-2 text-sm font-mono text-sc-gold focus:outline-none focus:border-sc-gold shadow-[0_0_10px_rgba(224,177,48,0.1)]"
@@ -254,22 +253,22 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId, isAlliedVie
               <div className="space-y-6">
                 <div className="sc-hud-border p-6 bg-sc-blue/[0.03] border-l-2 border-sc-blue/50 rounded-r relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-4 opacity-5">
-                    {getItemIcon(item?.type)}
+                    {getItemIcon(item?.type || "")}
                   </div>
                   <h4 className="text-[10px] font-bold text-sc-blue uppercase tracking-[0.3em] mb-3">Primary Intelligence</h4>
                   <p className="text-sm text-gray-300 leading-relaxed font-light">
-                    {item.description || "Historical data for this entry is currently restricted or unavailable in the local cache. No extended telemetry logs detected for this asset designation."}
+                    {item?.description || "Historical data for this entry is currently restricted or unavailable in the local cache. No extended telemetry logs detected for this asset designation."}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="sc-glass p-4 bg-black/40 border border-white/5 rounded">
                     <p className="text-[8px] text-gray-600 uppercase font-mono mb-1 tracking-widest">Manufacturer</p>
-                    <p className="text-sm font-bold text-white uppercase tracking-wider">{item.manufacturer || "UNKNOWN DESIGNATION"}</p>
+                    <p className="text-sm font-bold text-white uppercase tracking-wider">{item?.manufacturer || "UNKNOWN DESIGNATION"}</p>
                   </div>
                   <div className="sc-glass p-4 bg-black/40 border border-white/5 rounded">
                     <p className="text-[8px] text-gray-600 uppercase font-mono mb-1 tracking-widest">Size / Grade Class</p>
-                    <p className="text-sm font-bold text-white uppercase tracking-wider">{item.size || "—"} / {item.grade || "—"}</p>
+                    <p className="text-sm font-bold text-white uppercase tracking-wider">{item?.size || "—"} / {item?.grade || "—"}</p>
                   </div>
                 </div>
               </div>
@@ -282,11 +281,11 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId, isAlliedVie
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-white/5 border border-white/5 overflow-hidden rounded">
                   {[
-                    { label: "Designation", value: item.name },
-                    { label: "Classification", value: item.type },
-                    { label: "Sub-Type", value: item.subType || "Standard" },
-                    { label: "Wiki ID", value: item.wikiId || "LOCAL-ENT" },
-                    { label: "Manifest Source", value: item.isOrgItem ? "Org Vault" : "Galactic Wiki" },
+                    { label: "Designation", value: item?.name },
+                    { label: "Classification", value: item?.type },
+                    { label: "Sub-Type", value: item?.subType || "Standard" },
+                    { label: "Wiki ID", value: item?.wikiId || "LOCAL-ENT" },
+                    { label: "Manifest Source", value: item?.isOrgItem ? "Org Vault" : "Galactic Wiki" },
                     { label: "System Integrity", value: "Verified" },
                   ].map((spec) => (
                     <div key={spec.label} className="p-4 bg-[#0A0A12] hover:bg-sc-blue/[0.02] transition-colors">
@@ -302,9 +301,9 @@ export function ItemDetailsModal({ itemId, itemName, onClose, orgId, isAlliedVie
                 <p className="text-[8px] text-gray-600 font-mono uppercase tracking-[0.2em]">
                   End-to-End Encryption: 256-BIT // UEE-DATA-LINK ACTIVE
                 </p>
-                {item.wikiId && (
+                {item?.wikiId && (
                   <a 
-                    href={`https://starcitizen.tools/${encodeURIComponent(item.name)}`} 
+                    href={`https://starcitizen.tools/${encodeURIComponent(item?.name || "")}`} 
                     target="_blank" 
                     className="flex items-center gap-2 text-sc-blue hover:text-white transition-all text-[9px] font-bold uppercase tracking-widest"
                   >

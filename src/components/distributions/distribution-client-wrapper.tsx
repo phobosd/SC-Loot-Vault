@@ -20,14 +20,15 @@ import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 import axios from "axios";
 import Link from "next/link";
+import { User as NexusUser, Org, LootItem, LootSession } from "@/lib/types";
 
 interface DistributionClientWrapperProps {
-  org: any;
-  inventory: any[];
+  org: Org;
+  inventory: LootItem[];
   recentLogs: any[];
-  allUsers: any[];
+  allUsers: NexusUser[];
   userRole: string;
-  initialActiveSessions: any[];
+  initialActiveSessions: LootSession[];
 }
 
 export function DistributionClientWrapper({ 
@@ -41,7 +42,7 @@ export function DistributionClientWrapper({
   // UI State
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isParamsOpen, setIsParamsOpen] = useState(false);
-  const [activeSessions, setActiveSessions] = useState(initialActiveSessions);
+  const [activeSessions, setActiveSessions] = useState<LootSession[]>(initialActiveSessions);
   
   // Params State
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
@@ -100,7 +101,7 @@ export function DistributionClientWrapper({
                   <div>
                     <p className="text-xs font-bold text-white uppercase tracking-wider">{session.title}</p>
                     <p className="text-[8px] text-sc-blue/40 font-mono uppercase tracking-widest">
-                      {session.participants.length} OPERATORS SYNCED
+                      {session.participants?.length || 0} OPERATORS SYNCED
                     </p>
                   </div>
                 </div>
@@ -123,7 +124,7 @@ export function DistributionClientWrapper({
         </div>
         <div className="flex items-center gap-3">
           {(userRole === 'ADMIN' || userRole === 'SUPERADMIN') && (
-            <CreateSessionDialog orgId={org.id} inventory={inventory} users={allUsers} />
+            <CreateSessionDialog orgId={org.id || ""} inventory={inventory} users={allUsers} />
           )}
           <button 
             onClick={() => setIsHistoryOpen(true)}
@@ -145,11 +146,11 @@ export function DistributionClientWrapper({
       <DrawingArea 
         inventory={inventory} 
         participants={participants.map(u => ({ 
-          id: u.id, 
-          name: u.name || u.email,
+          id: u.id || "", 
+          name: u.name || u.email || "Unknown",
           orgName: u.org?.name
         }))} 
-        orgId={org.id} 
+        orgId={org.id || ""} 
       />
 
       {/* History Modal */}

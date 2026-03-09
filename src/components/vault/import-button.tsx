@@ -18,6 +18,7 @@ import { previewGoogleSheet } from "@/app/actions/import-sheet";
 import { addLootItems } from "@/app/actions/loot";
 import { cn } from "@/lib/utils";
 import Papa from "papaparse";
+import { LootItem } from "@/lib/types";
 
 interface ImportButtonProps {
   orgId: string;
@@ -62,7 +63,7 @@ export function ImportButton({ orgId }: ImportButtonProps) {
   const [rawHeaders, setRawHeaders] = useState<string[]>([]);
   const [rawData, setRawData] = useState<any[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
-  const [previewItems, setPreviewItems] = useState<any[]>([]);
+  const [previewItems, setPreviewItems] = useState<Partial<LootItem>[]>([]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -125,11 +126,11 @@ export function ImportButton({ orgId }: ImportButtonProps) {
 
   const generatePreview = () => {
     const items = rawData.map(row => {
-      const item: any = {};
+      const item: Partial<LootItem> = {};
       Object.entries(columnMapping).forEach(([schemaKey, csvHeader]) => {
-        item[schemaKey] = row[csvHeader];
+        (item as any)[schemaKey] = row[csvHeader];
       });
-      item.quantity = parseInt(item.quantity) || 1;
+      item.quantity = parseInt(String(item.quantity)) || 1;
       return item;
     }).filter(i => i.name && i.name.trim() !== "");
 
@@ -143,7 +144,7 @@ export function ImportButton({ orgId }: ImportButtonProps) {
       const payload = previewItems.map(item => ({
         ...item,
         orgId
-      }));
+      })) as any[];
       
       const result = await addLootItems(payload);
       if (result.success) {

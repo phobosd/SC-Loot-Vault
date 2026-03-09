@@ -5,19 +5,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { 
-  Heart, 
-  Search, 
-  Box, 
-  CheckCircle2, 
-  AlertCircle,
-  Handshake,
-  ArrowRight,
-  Package
+  Heart
 } from "lucide-react";
 import { WishlistManager } from "@/components/wishlist/wishlist-manager";
+import { User as NexusUser } from "@/lib/types";
 
 export default async function WishlistPage() {
-  const session: any = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions) as { user: NexusUser } | null;
   if (!session?.user) redirect("/login");
 
   const userId = session.user.id;
@@ -72,7 +66,7 @@ export default async function WishlistPage() {
         initialWishlist={wishlist} 
         availableItems={availableItems}
         orgId={orgId || ""}
-        userId={userId}
+        userId={userId || ""}
       />
     </div>
   );

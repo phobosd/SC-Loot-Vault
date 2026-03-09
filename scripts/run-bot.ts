@@ -5,17 +5,13 @@ import {
   REST, 
   Routes, 
   SlashCommandBuilder, 
-  EmbedBuilder,
-  Message,
-  ChatInputCommandInteraction
+  EmbedBuilder
 } from 'discord.js';
 import { PrismaClient } from '@prisma/client';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 const prisma = new PrismaClient();
-
-const PREFIX = "!vault";
 
 async function startBot() {
   const org = await prisma.org.findFirst({
@@ -101,8 +97,8 @@ async function startBot() {
           where: { id: org.id },
           data: { discordBotLastSeen: new Date() }
         });
-      } catch (err) {
-        console.error("Heartbeat failure:", err);
+      } catch {
+        console.error("Heartbeat failure detected.");
       }
     }, 30000); // Every 30s
   };
@@ -154,7 +150,7 @@ async function startBot() {
         });
 
         return interaction.reply({ content: `✅ Link established. Discord node tied to Operator: **${targetUser.name || designation}**.`, ephemeral: true });
-      } catch (err) {
+      } catch {
         return interaction.reply({ content: `❌ Error: Link protocol failed. Perhaps this ID is already tied?`, ephemeral: true });
       }
     }
