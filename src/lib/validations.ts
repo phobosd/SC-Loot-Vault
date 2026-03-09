@@ -190,3 +190,13 @@ export const rejectOrgRequestSchema = z.object({
   requestId: z.string().cuid(),
 });
 
+// API Key Schemas
+export const createApiKeySchema = z.object({
+  orgId: z.string().cuid(),
+  name: z.string().min(2).max(50),
+});
+
+export const deleteApiKeySchema = z.object({
+  keyId: z.string().cuid(),
+});
+

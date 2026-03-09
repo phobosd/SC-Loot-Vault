@@ -2,10 +2,25 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { validateApiKey } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  let isAuthorized = false;
+
+  try {
+    const orgId = await validateApiKey();
+    if (orgId) {
+      isAuthorized = true;
+    } else {
+      const session = await getServerSession(authOptions);
+      if (session) isAuthorized = true;
+    }
+  } catch (err) {
+    // API key was provided but invalid
+    return NextResponse.json({ error: "Invalid API Key" }, { status: 401 });
+  }
+
+  if (!isAuthorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

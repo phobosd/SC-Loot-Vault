@@ -91,6 +91,11 @@ This document outlines the identified refactoring, optimization, and security op
 *   **Implementation:** Enabled `pg_trgm` extensions and trigram GIN indexes.
 *   **Result:** The Manifest Bridge, Discord Bot, and Search APIs now support fuzzy matching, correctly identifying assets despite typos or partial names.
 
+### **N. External API Uplink (Secure Key Management)**
+*   **Status:** ✅ COMPLETED
+*   **Implementation:** Created `ApiKey` model and integrated `X-Nexus-Key` header-based authentication across core read endpoints.
+*   **Result:** Organizations can now securely expose their vault data to external recruitment sites or custom HUDs.
+
 ---
 
 *Authored by SC Loot Vault Engineering // 2956*

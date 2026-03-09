@@ -35,6 +35,15 @@ This document provides the essential operational context, architectural blueprin
 - **Discord Search:** The bot uses the same fuzzy matching logic for `/loot-search` and `/request-asset`.
 - **Manifest Enrichment:** The Google Sheet import protocol (`addLootItems`) automatically attempts to fuzzy-match new items against the `SCItemCache` to fill in missing metadata (category, manufacturer).
 
+### **C. External API Uplink (API Keys)**
+- **Authentication:** External integrations use the `X-Nexus-Key` header for authentication.
+- **Management:** Org Admins generate and decommission keys via **Settings > API Uplink Management**. Superadmins have override authority via **Superadmin Dashboard**.
+- **Exposed Endpoints:**
+    - `api/org-inventory`: Vault manifest read-access.
+    - `api/assignments`: Distribution history read-access.
+    - `api/sc-items/search`: Master manifest utility access.
+    - `api/events/[id]`: Live SSE stream access.
+
 ### **B. Discord Integration (Manifest Bridge)**
 - **Bot Location:** `scripts/run-bot.ts`.
 - **Commands:** `/link-account`, `/my-assets`, `/request-asset`, `/vault-status`, `/loot-search`.

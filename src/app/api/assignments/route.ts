@@ -2,15 +2,27 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { validateApiKey } from "@/lib/api-auth";
 
 export async function GET() {
-  const session: any = await getServerSession(authOptions);
-  
-  if (!session?.user) {
+  let orgId: string | null = null;
+
+  try {
+    orgId = await validateApiKey();
+    if (!orgId) {
+      const session: any = await getServerSession(authOptions);
+      if (session?.user?.orgId) {
+        orgId = session.user.orgId;
+      }
+    }
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 401 });
+  }
+
+  if (!orgId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const orgId = session.user.orgId;
   let org = null;
 
   if (orgId) {
@@ -22,7 +34,7 @@ export async function GET() {
 
   const assignments = await prisma.distributionLog.findMany({
     where: { 
-      ...(orgId ? { orgId } : {}),
+      orgId: orgId,
       type: "ASSIGNED"
     },
     include: {

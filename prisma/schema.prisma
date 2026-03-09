@@ -36,6 +36,20 @@ model Org {
   lootSessions             LootSession[]
   users                    User[]
   whitelabelConfig         WhitelabelConfig?
+  apiKeys                  ApiKey[]
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  orgId     String
+  key       String   @unique
+  name      String   // e.g. "External HUD", "Recruitment Site"
+  createdAt DateTime @default(now())
+  lastUsed  DateTime?
+  org       Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([key])
 }
 
 model Alliance {

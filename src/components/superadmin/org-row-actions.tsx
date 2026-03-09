@@ -11,13 +11,15 @@ import {
   Palette,
   Globe,
   Ghost,
-  ShieldCheck
+  ShieldCheck,
+  Key
 } from "lucide-react";
 import { updateOrg, deleteOrg } from "@/app/actions/org";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { createPortal } from "react-dom";
+import { ApiKeyManager } from "@/components/settings/api-key-manager";
 
 interface OrgRowActionsProps {
   org: {
@@ -33,6 +35,8 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
   const { update }: any = useSession();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isKeysOpen, setIsKeysOpen] = useState(false);
+  const [orgKeys, setOrgKeys] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -41,6 +45,21 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const fetchKeys = async () => {
+    try {
+      const res = await axios.get(`/api/orgs/${org.id}/keys`);
+      setOrgKeys(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleOpenKeys = async () => {
+    setIsMenuOpen(false);
+    await fetchKeys();
+    setIsKeysOpen(true);
+  };
 
   const handleImpersonateAdmin = async () => {
     setLoading(true);
@@ -145,6 +164,9 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
                 <button onClick={() => { setIsEditOpen(true); setIsMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-gray-400 hover:bg-sc-blue/10 hover:text-sc-blue transition-colors rounded">
                   <Edit className="w-3 h-3" /> Edit Org Node
                 </button>
+                <button onClick={handleOpenKeys} className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-gray-400 hover:bg-sc-blue/10 hover:text-sc-blue transition-colors rounded">
+                  <Key className="w-3 h-3" /> Manage API Keys
+                </button>
                 <button onClick={handleDelete} className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase text-sc-red/60 hover:bg-sc-red/10 hover:text-sc-red transition-colors rounded">
                   <Trash2 className="w-3 h-3" /> Decommission Org
                 </button>
@@ -199,6 +221,30 @@ export function OrgRowActions({ org }: OrgRowActionsProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {isKeysOpen && mounted && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="sc-glass w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 border-sc-blue/30 shadow-2xl">
+            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-sc-blue/5">
+              <div>
+                <h2 className="text-lg font-bold text-sc-blue tracking-widest uppercase flex items-center gap-2">
+                  <Key className="w-5 h-5" />
+                  API Uplink Management
+                </h2>
+                <p className="text-[10px] text-sc-blue/60 font-mono tracking-widest uppercase">External Integration Overrides // {org.name}</p>
+              </div>
+              <button onClick={() => setIsKeysOpen(false)} className="text-gray-500 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <ApiKeyManager orgId={org.id} keys={orgKeys} />
+            </div>
           </div>
         </div>,
         document.body
